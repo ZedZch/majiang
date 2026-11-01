@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>雀圣兵法 · 川渝麻将高阶推演教学系统 (换三张·血战到底)</title>
+    <link rel="stylesheet" href="css/tiles.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 顶部状态与控制栏 -->
+    <header class="app-header">
+        <div class="brand-area">
+            <span class="brand-logo">🀄</span>
+            <div>
+                <span class="brand-title">雀圣兵法</span>
+                <span class="brand-subtitle">川渝换三张 · 读牌与防点炮高阶推演教学系统</span>
+            </div>
+        </div>
+
+        <div class="header-stats">
+            <div class="stat-item">
+                <span class="stat-label">阶段：</span>
+                <span class="stat-value" id="current-phase-text">准备发牌</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">牌山余量：</span>
+                <span class="stat-value" id="wall-count">108</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">轮转：</span>
+                <span class="stat-value" id="turn-indicator">自家出牌</span>
+            </div>
+        </div>
+
+        <div class="header-actions">
+            <button class="btn btn-ai-hint" id="btn-deep-thinking" title="查看当前局势下完全合乎逻辑的大师思考过程">
+                💡 战术推演 (AI思考过程)
+            </button>
+            <button class="btn btn-secondary" id="btn-tile-matrix" title="查看全场27种牌的未现张数">
+                🔍 现牌透视
+            </button>
+            <button class="btn btn-secondary" id="btn-scenarios" title="实战高危残局训练">
+                🎯 残局演练
+            </button>
+            <button class="btn btn-primary" id="btn-restart" title="重新开始新的一局">
+                🔄 重新开局
+            </button>
+        </div>
+    </header>
+
+    <!-- 牌桌视口 -->
+    <main class="table-viewport">
+        <div class="mahjong-table">
+            <!-- 顶部对家 (西家) -->
+            <section class="player-seat seat-top">
+                <div class="player-card" id="seat-card-2">
+                    <span class="player-wind-badge">西</span>
+                    <span class="player-name">对家 (西)</span>
+                    <span class="que-badge" style="display:none;">缺门</span>
+                    <span class="hu-badge" style="display:none;">已胡</span>
+                </div>
+                <div class="opponent-hand-bar"></div>
+                <div class="melds-row"></div>
+                <div class="river-container"></div>
+            </section>
+
+            <!-- 左侧上家 (北家) -->
+            <section class="player-seat seat-left">
+                <div class="player-card" id="seat-card-3">
+                    <span class="player-wind-badge">北</span>
+                    <span class="player-name">上家 (北)</span>
+                    <span class="que-badge" style="display:none;">缺门</span>
+                    <span class="hu-badge" style="display:none;">已胡</span>
+                </div>
+                <div class="opponent-hand-bar"></div>
+                <div class="melds-row"></div>
+                <div class="river-container"></div>
+            </section>
+
+            <!-- 中心轮盘 (牌墙余量、转盘) -->
+            <section class="center-hub">
+                <div class="hub-disc">
+                    <div class="hub-wall-count" id="hub-wall-display">--</div>
+                    <div class="hub-wall-label">牌山存量</div>
+                    <div class="hub-turn-indicator" id="hub-turn-status">● 进行中</div>
+                </div>
+            </section>
+
+            <!-- 右侧下家 (南家) -->
+            <section class="player-seat seat-right">
+                <div class="player-card" id="seat-card-1">
+                    <span class="player-wind-badge">南</span>
+                    <span class="player-name">下家 (南)</span>
+                    <span class="que-badge" style="display:none;">缺门</span>
+                    <span class="hu-badge" style="display:none;">已胡</span>
+                </div>
+                <div class="opponent-hand-bar"></div>
+                <div class="melds-row"></div>
+                <div class="river-container"></div>
+            </section>
+
+            <!-- 底部自家 (东家 / 我) -->
+            <section class="player-seat seat-bottom">
+                <div class="player-card active-turn" id="seat-card-0">
+                    <span class="player-wind-badge">东</span>
+                    <span class="player-name">自家 (我)</span>
+                    <span class="que-badge" id="my-que-badge" style="display:none;">缺门</span>
+                    <span class="hu-badge" id="my-hu-badge" style="display:none;">已胡</span>
+                </div>
+
+                <div class="river-container"></div>
+                <div class="melds-row" id="my-melds"></div>
+
+                <!-- 自家操作栏 (打出、碰、杠、胡、过) -->
+                <div class="action-bar" id="action-bar">
+                    <button class="btn btn-primary" id="btn-discard" style="display:none; font-size:14px; padding: 6px 16px;">
+                        📤 打出选中牌
+                    </button>
+                </div>
+
+                <!-- 手牌展示与摸牌位 -->
+                <div class="my-hand-wrapper">
+                    <div id="my-hand-tiles" style="display: inline-flex; gap: 4px;"></div>
+                    <div class="draw-tile-slot" id="my-draw-tile"></div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 底部状态与操作说明 -->
+    <footer class="app-footer">
+        <div>💡 操作提示：点击手牌选中，双击或点击「打出选中牌」出牌。有定缺门牌时按川麻规则必须优先出清定缺门。</div>
+        <div>随时点击顶部「💡战术推演」获取具备数学逻辑和敌情反推的大师思考回路。</div>
+    </footer>
+
+    <!-- 全局提示气泡 (Toast) -->
+    <div id="banner-toast" style="display:none; position:fixed; top:70px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.85); border:1px solid #f39c12; color:#fff; padding:10px 24px; border-radius:30px; font-weight:bold; font-size:14px; box-shadow:0 6px 20px rgba(0,0,0,0.6); z-index:9999; transition:opacity 0.3s ease;"></div>
+
+    <!-- 模态弹窗 1：深度战术推演抽屉 (核心灵魂) -->
+    <div class="modal-overlay" id="thinking-modal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <span>💡</span> 雀圣推演 · 实时手牌攻守与读牌防炮深度推导
+                </div>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- 选项卡切换 -->
+                <div class="thinking-tabs">
+                    <button class="tab-btn active" data-target="panel-optimal">🎯 最佳切牌与思考过程</button>
+                    <button class="tab-btn" data-target="panel-comparison">📊 各切牌方案横向对比</button>
+                    <button class="tab-btn" data-target="panel-opponents">🕵️ 三家对手深度读牌镜像</button>
+                    <button class="tab-btn" data-target="panel-defense">🛡️ 牌河安全与筋壁防炮</button>
+                    <button class="tab-btn" data-target="panel-theory">📖 进阶麻将雀理讲堂</button>
+                </div>
+
+                <!-- 选项卡 1：推荐切牌与四步深度推理 -->
+                <div class="tab-content-panel" id="panel-optimal">
+                    <div class="recommend-banner" id="thinking-recommend-banner"></div>
+                    <div class="reasoning-flow" id="thinking-flow-steps"></div>
+                </div>
+
+                <!-- 选项卡 2：方案横向对比表格 -->
+                <div class="tab-content-panel" id="panel-comparison" style="display:none;">
+                    <table class="comp-table">
+                        <thead>
+                            <tr>
+                                <th>候选切牌</th>
+                                <th>切后向听</th>
+                                <th>有效进张面 (余张)</th>
+                                <th>综合危险度</th>
+                                <th>期望EV评分</th>
+                                <th>防守与战术透视</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comp-table-tbody"></tbody>
+                    </table>
+                </div>
+
+                <!-- 选项卡 3：三家对手深度读牌 -->
+                <div class="tab-content-panel" id="panel-opponents" style="display:none;">
+                    <div class="opponents-intel-grid" id="opponents-intel-grid"></div>
+                </div>
+
+                <!-- 选项卡 4：牌河安全度与筋牌/壁牌 -->
+                <div class="tab-content-panel" id="panel-defense" style="display:none;">
+                    <div class="reasoning-step-card" style="margin-bottom:14px; border-left-color:#27ae60;">
+                        <h4 style="color:#2ecc71; margin-bottom:6px;">防点炮基本盘与绝对安全判定</h4>
+                        <p style="font-size:13px; line-height:1.6; color:#cbd5e1;">
+                            1. <strong>定缺门绝对免疫</strong>：若对手定缺为条，则打出任何条子对该对手的放炮率为绝对 0%！<br>
+                            2. <strong>绝张 (4张已现)</strong>：当场上已打出或手牌合计见满4张时，除特殊自摸番外，无人可单钓或成顺刻，绝无点炮可能。<br>
+                            3. <strong>现物跟打 (Genbutsu)</strong>：对手同巡刚打出的牌，或自己牌河打过的牌，安全性极高。
+                        </p>
+                    </div>
+                    <div class="reasoning-step-card" style="border-left-color:#f39c12;">
+                        <h4 style="color:#f39c12; margin-bottom:6px;">筋牌 (Suji) 与壁牌 (Kabe) 高阶应用</h4>
+                        <p style="font-size:13px; line-height:1.6; color:#cbd5e1;">
+                            • <strong>1-4-7 筋线</strong>：对手打过4，1是破两面听的真筋，但7是半筋（仍需防56待47）。对手打过7，9是真筋。<br>
+                            • <strong>2-5-8 筋线</strong>：打过5，2和8均为筋牌，安全性上升约 70%（需警惕对手做对对胡或清一色单钓）。<br>
+                            • <strong>No-Chance 断牌</strong>：当某一中张（如7）全场4张全部现明时，对手绝不可能持有 7-8 等待 6-9，外侧牌（8与9）获得结构性安全屏障。
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 选项卡 5：进阶讲堂 -->
+                <div class="tab-content-panel" id="panel-theory" style="display:none;">
+                    <div class="reasoning-step-card" style="margin-bottom:12px;">
+                        <h4 style="color:#f1c40f;">川麻血战到底四大高级战术原则</h4>
+                        <ul style="font-size:13px; line-height:1.8; color:#cbd5e1; padding-left:20px; margin-top:6px;">
+                            <li><strong>原则一：留长弃短，做大不做小</strong>。换三张后只要某门手牌达到8张以上，即便进张不顺，也应全力奔向清一色（4番起步），平胡（1番）在血战到底中往往输多赢少。</li>
+                            <li><strong>原则二：变步手切即警报</strong>。对手由打定缺牌转为手切打出第一张非缺门牌（变步点），通常意味着其手牌在1-2巡内将快速入听。</li>
+                            <li><strong>原则三：宁弃胡，不点大</strong>。如果场上有对手已碰出2-3副清一色，而自己仅为1番杂叫或未入听，应当机立断彻底弃胡拆牌跟打绝对安全牌，避免承受8-16倍巨额放炮。</li>
+                            <li><strong>原则四：定缺牌早打中张</strong>。手中定缺门的4、5、6等中张应在序盘（前3巡）毫不犹豫率先打出，越往后打，放炮危险越以指数级攀升。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态弹窗 2：换三张选择 -->
+    <div class="modal-overlay" id="swap-modal">
+        <div class="modal-card" style="max-width:680px;">
+            <div class="modal-header">
+                <div class="modal-title"><span>🔄</span> 重庆/川麻 · 换三张阶段</div>
+            </div>
+            <div class="modal-body selection-prompt-box">
+                <div style="font-size:14px; margin-bottom:12px; color:#e2e8f0;">
+                    请在手牌中选择 <strong>3 张完全相同花色的牌</strong> 与他人交换（点击牌面可自由挑选）：
+                </div>
+                <!-- 手牌分组可选区 -->
+                <div id="swap-hand-selector" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px; max-height:220px; overflow-y:auto; padding:6px; background:rgba(0,0,0,0.25); border-radius:8px;"></div>
+
+                <div style="font-size:13px; color:#f1c40f; font-weight:bold; margin-bottom:6px;">已选出的 3 张交换牌：</div>
+                <div class="swap-pick-area" id="swap-picked-tiles" style="min-height:76px; background:rgba(0,0,0,0.3); border-radius:8px; padding:6px;"></div>
+                <div id="swap-recommend-tip" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px 14px; font-size:12px; text-align:left; line-height:1.6; color:#94a3b8; margin-top:10px;"></div>
+                <div style="margin-top:16px; display:flex; justify-content:center; gap:12px;">
+                    <button class="btn btn-secondary" id="btn-use-ai-swap">💡 一键采用 AI 建议</button>
+                    <button class="btn btn-primary" id="btn-confirm-swap" style="padding:8px 24px; font-size:14px;" disabled>
+                        确认换出这 3 张牌
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态弹窗 3：定缺选择 -->
+    <div class="modal-overlay" id="dingque-modal">
+        <div class="modal-card" style="max-width:520px;">
+            <div class="modal-header">
+                <div class="modal-title"><span>🎯</span> 重庆/川麻 · 定缺门选择</div>
+            </div>
+            <div class="modal-body selection-prompt-box">
+                <div style="font-size:14px; color:#e2e8f0;">
+                    请选定一门花色作为<strong>定缺门</strong>（定缺牌必须全部打光方可胡牌）：
+                </div>
+                <div class="dingque-options">
+                    <button class="dingque-btn wan" data-suit="wan">
+                        <span>萬</span>
+                        <span style="font-size:13px;">缺万</span>
+                    </button>
+                    <button class="dingque-btn tiao" data-suit="tiao">
+                        <span>条</span>
+                        <span style="font-size:13px;">缺条</span>
+                    </button>
+                    <button class="dingque-btn tong" data-suit="tong">
+                        <span>筒</span>
+                        <span style="font-size:13px;">缺筒</span>
+                    </button>
+                </div>
+                <div id="dingque-recommend-tip" style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px 14px; font-size:12px; text-align:left; line-height:1.6; color:#94a3b8;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态弹窗 4：全场现牌与牌山透视矩阵 -->
+    <div class="modal-overlay" id="matrix-modal">
+        <div class="modal-card" style="max-width:820px;">
+            <div class="modal-header">
+                <div class="modal-title"><span>🔍</span> 全场 27 种牌未现存量透视矩阵</div>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="font-size:12px; color:#94a3b8; margin-bottom:12px;">
+                    数据涵盖：自家手牌、全场已出牌河、所有副露明牌。绿色为未现存量充足(>=2)，黄色为紧缺(1)，红色为已断绝(0张)。
+                </div>
+                <div class="tile-matrix-grid" id="tile-matrix-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态弹窗 5：经典高阶战术残局训练 -->
+    <div class="modal-overlay" id="scenarios-modal">
+        <div class="modal-card" style="max-width:760px;">
+            <div class="modal-header">
+                <div class="modal-title"><span>🎯</span> 经典高阶战术残局推演训练</div>
+                <button class="modal-close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="scenarios-list-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入核心脚本 -->
+    <script src="js/config.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/mahjong-logic.js"></script>
+    <script src="js/ai-analyzer.js"></script>
+    <script src="js/ai-player.js"></script>
+    <script src="js/scenarios.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
