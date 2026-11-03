@@ -4,13 +4,13 @@
  */
 
 :root {
-    --tile-width: 50px;
-    --tile-height: 70px;
-    --tile-radius: 6px;
-    --tile-bg-front: linear-gradient(160deg, #ffffff 0%, #f7f3ec 60%, #ebe3d3 100%);
+    --tile-width: 52px;
+    --tile-height: 72px;
+    --tile-radius: 7px;
+    --tile-bg-front: linear-gradient(165deg, #ffffff 0%, #fdfbf7 50%, #f4eee1 100%);
     --tile-bg-back: linear-gradient(145deg, #1fa366 0%, #12693f 60%, #0a4026 100%);
-    --tile-border: #d4caa8;
-    --tile-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 0 2px 0 #b3a586, inset 0 1px 1px rgba(255, 255, 255, 0.9);
+    --tile-border: #cdc29c;
+    --tile-shadow: 0 4px 12px rgba(0, 0, 0, 0.45), 0 3px 0 #b3a277, inset 0 1.5px 1.5px rgba(255, 255, 255, 0.95), inset 0 -1.5px 1.5px rgba(180, 160, 130, 0.2);
 }
 
 /* 基础麻将牌单体 */
@@ -116,15 +116,31 @@
     font-size: 9px;
 }
 
-/* 牌面矢量图体内置 */
-.tile-svg {
-    width: 86%;
-    height: 88%;
-    display: block;
+/* 牌面居中内容容器 */
+.mj-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    padding: 3px 2px;
     pointer-events: none;
+    overflow: hidden;
 }
 
-/* 万字牌书法排版 */
+/* 牌面矢量图体内置 (饱满居中、清晰大饼与粗壮双节竹) */
+.tile-svg {
+    width: 92%;
+    height: 94%;
+    display: block;
+    margin: auto;
+    pointer-events: none;
+    overflow: visible;
+    filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.28));
+}
+
+/* 万字牌金石书法排版 (居中、大气、赤朱砂与深青) */
 .wan-face-container {
     display: flex;
     flex-direction: column;
@@ -133,30 +149,35 @@
     width: 100%;
     height: 100%;
     pointer-events: none;
+    user-select: none;
+    line-height: 1;
 }
 
 .wan-num-glyph {
-    font-family: 'Kaiti', 'STKaiti', 'SimSun', 'Songti SC', serif;
-    font-size: 22px;
+    font-family: 'Kaiti', 'STKaiti', 'KaiTi_GB2312', 'SimSun', serif;
+    font-size: 26px;
     font-weight: 900;
-    color: #1e50a2;
+    color: #103f7d;
     line-height: 1;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8), 0 -0.5px 0.5px rgba(0, 0, 0, 0.35);
+    transform: translateY(1px);
 }
 
 .wan-char-glyph {
-    font-family: 'Kaiti', 'STKaiti', 'SimSun', 'Songti SC', serif;
-    font-size: 18px;
+    font-family: 'Kaiti', 'STKaiti', 'KaiTi_GB2312', 'SimSun', serif;
+    font-size: 22px;
     font-weight: 900;
-    color: #c0392b;
+    color: #b82a1e;
     line-height: 1;
-    margin-top: 1px;
+    margin-top: 2px;
+    text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8), 0 -0.5px 0.5px rgba(0, 0, 0, 0.35);
 }
 
-.mj-tile.tile-sm .wan-num-glyph { font-size: 15px; }
-.mj-tile.tile-sm .wan-char-glyph { font-size: 12px; }
+.mj-tile.tile-sm .wan-num-glyph { font-size: 16px; }
+.mj-tile.tile-sm .wan-char-glyph { font-size: 13px; }
 
-.mj-tile.tile-xs .wan-num-glyph { font-size: 11px; }
-.mj-tile.tile-xs .wan-char-glyph { font-size: 9px; }
+.mj-tile.tile-xs .wan-num-glyph { font-size: 12px; }
+.mj-tile.tile-xs .wan-char-glyph { font-size: 10px; }
 
 /* 明确的放炮危险度角标 & AI推荐出牌角标 */
 .danger-badge {

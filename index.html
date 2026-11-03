@@ -153,11 +153,12 @@
                 <!-- 选项卡切换 -->
                 <div class="thinking-tabs">
                     <button class="tab-btn active" data-target="panel-optimal">🎯 最佳切牌与思考过程</button>
-                    <button class="tab-btn" data-target="panel-comparison">📊 各切牌方案横向对比</button>
+                    <button class="tab-btn" data-target="panel-neural">🧠 神经网络推理与特征流</button>
+                    <button class="tab-btn" data-target="panel-comparison">📊 候选打法与公式代入</button>
                     <button class="tab-btn" data-target="panel-reaction" id="tab-btn-reaction" style="display:none; color:#f1c40f;">🔔 碰/杠/胡 战术决策</button>
                     <button class="tab-btn" data-target="panel-opponents">🕵️ 三家对手深度读牌镜像</button>
                     <button class="tab-btn" data-target="panel-defense">🛡️ 牌河安全与筋壁防炮</button>
-                    <button class="tab-btn" data-target="panel-logic">📐 算法与推演逻辑揭秘</button>
+                    <button class="tab-btn" data-target="panel-logic">📐 算法设计与 Suphx 雀理</button>
                     <button class="tab-btn" data-target="panel-theory">📖 进阶麻将雀理讲堂</button>
                 </div>
 
@@ -172,17 +173,51 @@
                     <div class="reasoning-flow" id="thinking-flow-steps"></div>
                 </div>
 
-                <!-- 选项卡 2：方案横向对比表格 -->
+                <!-- 选项卡：神经网络推理与特征流 (Suphx / Mortal 双头架构) -->
+                <div class="tab-content-panel" id="panel-neural" style="display:none;">
+                    <div class="neural-header-card" style="background: rgba(15, 23, 42, 0.85); border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <div>
+                            <h4 style="color: #38bdf8; margin-bottom: 4px; display:flex; align-items:center; gap:8px;">
+                                <span>🧠 Suphx / Mortal 深度双头残差网络推理图谱</span>
+                                <span class="badge" style="background:#0284c7; color:#fff; font-size:10px; padding:2px 6px; border-radius:4px;">实时前向计算</span>
+                            </h4>
+                            <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+                                动态输入：手牌27维状态、四家牌河时序、巡目时钟、花色自注意力与对手威胁交叉注意力。
+                            </p>
+                        </div>
+                        <div id="neural-clock-badge" style="background:#1e293b; border:1px solid #475569; padding:6px 12px; border-radius:6px; font-size:12px; color:#f1c40f; font-weight: bold;">
+                            序盘第 1 巡 (极速进张抢叫期)
+                        </div>
+                    </div>
+
+                    <!-- 神经网络拓扑 Canvas 画布 -->
+                    <div style="background: #090d16; border: 1px solid #1e293b; border-radius: 10px; padding: 8px; position: relative; overflow: hidden; box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);">
+                        <canvas id="neural-canvas" style="width: 100%; height: 360px; display: block;"></canvas>
+                    </div>
+
+                    <!-- 候选打法神经元激活选择条 -->
+                    <div style="margin-top: 14px;">
+                        <h5 style="color: #cbd5e1; margin-bottom: 8px; font-size: 13px;">点击切换候选切牌，观察其专用神经激活路径与公式代入：</h5>
+                        <div id="neural-candidate-selector" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                    </div>
+
+                    <!-- 选中牌的神经激活与数学代入明细 -->
+                    <div id="neural-active-detail" style="margin-top: 12px;"></div>
+                </div>
+
+                <!-- 选项卡 2：方案横向对比与数学公式精确代入表格 -->
                 <div class="tab-content-panel" id="panel-comparison" style="display:none;">
                     <table class="comp-table">
                         <thead>
                             <tr>
                                 <th>候选切牌</th>
+                                <th>策略概率 P(π)</th>
                                 <th>切后向听</th>
-                                <th>有效进张面 (余张)</th>
+                                <th>有效进张 (余张)</th>
+                                <th>清一色与番型</th>
                                 <th>综合危险度</th>
-                                <th>期望EV评分</th>
-                                <th>防守与战术透视</th>
+                                <th>综合 Q值 (EV)</th>
+                                <th>数学代入公式与思考回路</th>
                             </tr>
                         </thead>
                         <tbody id="comp-table-tbody"></tbody>
@@ -214,42 +249,37 @@
                     </div>
                 </div>
 
-                <!-- 选项卡 5：算法与逻辑揭秘 -->
+                <!-- 选项卡 5：算法设计与 Suphx 雀理揭秘 -->
                 <div class="tab-content-panel" id="panel-logic" style="display:none;">
-                    <div class="reasoning-step-card" style="margin-bottom:12px; border-left-color:#3498db;">
-                        <h4 style="color:#3498db; margin-bottom:6px;">一、向听数（Shanten）与递归面子拆解算法</h4>
+                    <div class="reasoning-step-card" style="margin-bottom:12px; border-left-color:#38bdf8;">
+                        <h4 style="color:#38bdf8; margin-bottom:6px;">一、微软 Suphx 与顶尖麻将 AI 的双头网络核心架构</h4>
                         <p style="font-size:13px; line-height:1.7; color:#cbd5e1;">
-                            系统底层采用<strong>无字牌专用递归回溯树算法</strong>。枚举手牌中每一个可能的将牌（对子），随后对其余牌进行深度优先搜索（DFS），拆解出最佳的顺子、刻子与两面/坎张搭子组合：<br>
-                            $$\text{标准向听数} = 2 \times (\text{目标面子数} - \text{已有面子数}) - \text{搭子数} - (\text{是否有将 ? } 1 : 0)$$
-                            同时独立计算七对向听数（$6 - \text{对子数}$），取两者最小值。结合全场牌山与已见牌，计算使向听数下降的所有<strong>有效进张种数与未见张数</strong>。
+                            本系统吸收了微软亚洲研究院 <strong>Suphx（超级凤凰）</strong> 与现代开源麻将 AI（如 Mortal / NAGA）的决策架构。AI 采用<strong>策略头（Policy Head $\pi$）与价值头（Value Head $V$）双头结构</strong>：<br>
+                            • <strong>输入特征层</strong>：将 27 种手牌、副露、四家弃牌序列、定缺掩码与巡目时钟转化为高维特征张量。<br>
+                            • <strong>自注意力主干（Self-Attention）</strong>：动态计算花色注意力（锁定主战门）与对手威胁交叉注意力。<br>
+                            • <strong>输出双头</strong>：策略头输出各候选切牌的 Softmax 概率分布 $P(a|s)$；价值头输出预估和了率 $P_{\text{win}}$、放炮率 $P_{\text{deal-in}}$ 与期望番数 $E[\text{Fan}]$。
                         </p>
                     </div>
 
                     <div class="reasoning-step-card" style="margin-bottom:12px; border-left-color:#e67e22;">
-                        <h4 style="color:#e67e22; margin-bottom:6px;">二、对手读牌与手牌镜像反推逻辑</h4>
+                        <h4 style="color:#e67e22; margin-bottom:6px;">二、为什么盲目防守必输？川麻血战到底三大胜率真理</h4>
                         <p style="font-size:13px; line-height:1.7; color:#cbd5e1;">
-                            系统通过三重动态特征捕捉对手意图：<br>
-                            1. <strong>换三张逆推</strong>：换出的花色代表起手不超过3-4张；换入的花色手牌剧增3张，成为做牌核心。<br>
-                            2. <strong>变步点抓听</strong>：对手从打定缺牌转为手切打出第一张非缺门牌的巡目为“变步点”。此时通常手牌已达到一向听或听牌状态！<br>
-                            3. <strong>清一色特征识别</strong>：当对手连续打出某一门非缺门中张，且副露全部集中于另一门时，清一色置信度升至 80%+，威胁等级拉满。
+                            传统日麻因“一人放炮即终局”且有振听限制，极重防守；但<strong>川渝血战到底规则完全不同</strong>：<br>
+                            1. <strong>巡目时钟攻守自适应</strong>：在序盘（1-6巡），全场听牌率不足 $5\%$，此时若因为害怕生张而拆掉两面搭子或对子，手牌将彻底滞后。因此序盘必须 <strong>100% 牌效进攻</strong>！中盘（7-11巡）攻守转换，终盘（12+巡）决战防大牌。<br>
+                            2. <strong>以攻代守，先胡下轿</strong>：川麻一家胡牌后游戏继续，<strong>最先胡牌者立即获得绝对免死金牌</strong>（不会放炮、不会查叫）。听牌状态（0向听）即便面临危险，也必须攻叫冲胡！<br>
+                            3. <strong>清一色 16 倍与流局查叫惩罚</strong>：平胡仅 1 番，清一色高达 4 番（16倍），因此起手密集的单门必须全力纯化清一色；终盘若落后退向听，一旦荒庄流局将被查叫赔付所有听牌者全额番数！
                         </p>
                     </div>
 
                     <div class="reasoning-step-card" style="margin-bottom:12px; border-left-color:#9b59b6;">
-                        <h4 style="color:#9b59b6; margin-bottom:6px;">三、筋牌（Suji）与壁牌（Kabe）几何防守模型</h4>
+                        <h4 style="color:#9b59b6; margin-bottom:6px;">三、全透明 Q值数学代入公式 (Every Number Accounted For)</h4>
                         <p style="font-size:13px; line-height:1.7; color:#cbd5e1;">
-                            • <strong>真筋 vs 半筋</strong>：对手打过4，如果他是两面听（23听14），打4即自断14两面，因此1为真筋绝对安全；但7为半筋，因为对手仍可能持有56听47！<br>
-                            • <strong>No-Chance 断牌</strong>：当全场4张7全部现明时，对手绝不可能持有78听69，8与9获得几何阻断保护。<br>
-                            • <strong>定缺门绝对安全</strong>：对手定缺花色的牌放炮率为绝对 0%。
-                        </p>
-                    </div>
-
-                    <div class="reasoning-step-card" style="border-left-color:#2ecc71;">
-                        <h4 style="color:#2ecc71; margin-bottom:6px;">四、攻守平衡净期望值（Net EV）决策公式</h4>
-                        <p style="font-size:13px; line-height:1.7; color:#cbd5e1;">
-                            每一张候选牌的推荐权重不仅看牌效，更要严控放炮损失：<br>
-                            $$\text{Net EV} = \text{进张速度价值} - \text{放炮危险度} \times \text{对手预估番数} \times \text{防守权重}$$
-                            当手牌向听数落后（$\ge 2$向听）且对手有高番威胁时，防守权重提高至 1.4，系统会强力推荐“拆牌弃胡跟打安全牌”；当自身清一色听牌时，全力进攻！
+                            系统为每一个候选打法计算综合动作价值 $Q(t)$，并完全公开数值代入：<br>
+                            $$Q(t) = \underbrace{S(t)}_{\text{基础速度 + 未见进张}} + \underbrace{F(t)}_{\text{清一色番型溢价}} - \underbrace{D(t)}_{\text{放炮折损}} - \underbrace{C(t)}_{\text{查叫防御}}$$
+                            • <strong>$S(t)$</strong>：0向听赋予 $120$ 分基数，1向听赋予 $65$ 分，外加 $\text{未见牌数} \times 2.2$。<br>
+                            • <strong>$F(t)$</strong>：若单门手牌达 $7+$ 张，切杂门纯化清一色奖励 $+15 \sim 26$ 分；若拆毁主战门扣 $-18$ 分。<br>
+                            • <strong>$D(t)$</strong>：危险度 $\times$ 当前巡目时钟系数（序盘 $0.04$，中盘 $0.45$，终盘 $1.15$）$\times$ 对手番数。<br>
+                            • <strong>$C(t)$</strong>：终盘退向听扣除 $20$ 分流局查叫重罚。
                         </p>
                     </div>
                 </div>
@@ -361,6 +391,7 @@
     <script src="js/mahjong-logic.js"></script>
     <script src="js/ai-analyzer.js"></script>
     <script src="js/ai-player.js"></script>
+    <script src="js/neural-visualizer.js"></script>
     <script src="js/scenarios.js"></script>
     <script src="js/app.js"></script>
 </body>

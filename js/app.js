@@ -1152,20 +1152,76 @@ class MahjongApp {
             bannerContainer.innerHTML = `
                 <div class="banner-tile-wrap">
                     ${this.createTileElement(best.tile, { interactive: false }).outerHTML}
-                    <span style="font-size: 11px; color: #f1c40f; font-weight: bold;">推荐切牌</span>
+                    <span style="font-size: 11px; color: #f1c40f; font-weight: bold;">⭐首选推荐</span>
                 </div>
                 <div class="banner-info">
                     <div class="banner-action-title">
-                        首选切出【${formatTile(best.tile)}】 —— 综合 EV 期望评分：<span style="color:#f1c40f;">${best.netEV}分</span>
+                        首选切出【${formatTile(best.tile)}】 —— 综合 Q值评分：<span style="color:#f1c40f;">${best.netEV}分</span> (策略头置信度: <span style="color:#38bdf8;">${best.probability}%</span>)
                     </div>
                     <div class="banner-action-desc">
                         打出后向听：<strong>${best.shanten === 0 ? '已入听 (0向听)' : `${best.shanten}向听`}</strong> | 
-                        有效进张数：<strong>${best.effectiveCount} 张</strong> | 
+                        有效进张数：<strong>${best.effectiveCount} 张未见牌</strong> | 
                         危险度估算：<span style="color:${best.dangerInfo.badgeColor}; font-weight:bold;">${best.dangerInfo.score}% (${best.dangerInfo.levelText})</span>
-                        <br><span style="color: #94a3b8; font-size: 12px;">防守透视：${best.dangerInfo.primaryReason}</span>
+                        <br><span style="color: #cbd5e1; font-size: 12px; font-family: monospace; background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">📐 实年代入公式：${best.math.formulaString}</span>
                     </div>
                 </div>
             `;
+        }
+
+        // 渲染神经网络推理可视化面板
+        const neuralCanvas = document.getElementById('neural-canvas');
+        if (neuralCanvas && window.neuralVisualizer) {
+            neuralVisualizer.init(neuralCanvas);
+            neuralVisualizer.draw(report.neuralState, best.tile.code);
+
+            const clockBadge = document.getElementById('neural-clock-badge');
+            if (clockBadge) clockBadge.innerText = report.neuralState.gameStageText;
+
+            const selector = document.getElementById('neural-candidate-selector');
+            const detailBox = document.getElementById('neural-active-detail');
+            if (selector && detailBox) {
+                selector.innerHTML = '';
+                report.rankedOptions.forEach((opt, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn';
+                    btn.style.cssText = `padding: 4px 10px; font-size: 12px; border-radius: 6px; cursor: pointer; border: 1px solid ${idx === 0 ? '#f1c40f' : '#475569'}; background: ${idx === 0 ? 'rgba(241,196,15,0.2)' : '#1e293b'}; color: ${idx === 0 ? '#f1c40f' : '#cbd5e1'};`;
+                    btn.innerText = `${formatTile(opt.tile)} (P=${opt.probability}% | Q=${opt.netEV})`;
+                    btn.addEventListener('click', () => {
+                        selector.querySelectorAll('button').forEach(b => {
+                            b.style.borderColor = '#475569';
+                            b.style.background = '#1e293b';
+                            b.style.color = '#cbd5e1';
+                        });
+                        btn.style.borderColor = '#f1c40f';
+                        btn.style.background = 'rgba(241,196,15,0.2)';
+                        btn.style.color = '#f1c40f';
+
+                        neuralVisualizer.draw(report.neuralState, opt.tile.code);
+                        renderNeuralDetail(opt);
+                    });
+                    selector.appendChild(btn);
+                });
+
+                const renderNeuralDetail = (opt) => {
+                    detailBox.innerHTML = `
+                        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid #475569; border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.6;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 4px;">
+                                <strong style="color: #38bdf8; font-size: 14px;">切出【${formatTile(opt.tile)}】全参数代入与神经输出剖析：</strong>
+                                <span style="color: #f1c40f; font-weight: bold;">策略选择概率 P(π) = ${opt.probability}% | 综合期望 Q值 = ${opt.netEV}分</span>
+                            </div>
+                            <div style="background: #0f172a; padding: 8px 12px; border-radius: 6px; font-family: monospace; color: #34d399; margin-bottom: 8px; border-left: 3px solid #10b981;">
+                                ${opt.math.formulaString}
+                            </div>
+                            <div style="color: #cbd5e1; font-size: 12px;">
+                                • <strong>向听与进张</strong>：打出后为 <strong>${opt.shanten === 0 ? '听牌 (0向听)' : `${opt.shanten}向听`}</strong>，未见进张 <strong>${opt.effectiveCount} 张</strong>。<br>
+                                • <strong>清一色与番型</strong>：${opt.math.qingyiseNote} (溢价 ${opt.math.fanPremium >= 0 ? '+' : ''}${opt.math.fanPremium}分)。<br>
+                                • <strong>防点炮折损</strong>：放炮危险度 ${opt.dangerInfo.score}% (${opt.dangerInfo.levelText})，经当前巡目时钟调节折损 -${opt.math.defensePenalty}分。
+                            </div>
+                        </div>
+                    `;
+                };
+                renderNeuralDetail(best);
+            }
         }
 
         // 渲染 4 步深度逻辑推演流
@@ -1195,11 +1251,13 @@ class MahjongApp {
                 const effList = opt.effectiveTiles.map(e => `${formatTile(e.tile)}(${e.count}张)`).join(', ');
                 tr.innerHTML = `
                     <td><strong>${formatTile(opt.tile)}</strong></td>
+                    <td><strong style="color:#38bdf8;">${opt.probability}%</strong></td>
                     <td>${opt.shanten === 0 ? '<span style="color:#2ecc71;font-weight:bold;">听牌</span>' : `${opt.shanten}向听`}</td>
                     <td><strong>${opt.effectiveCount}张</strong> <span style="font-size:11px;color:#94a3b8;">(${effList || '无'})</span></td>
+                    <td style="font-size:11px; color:#cbd5e1;">${opt.math.qingyiseNote}</td>
                     <td><span style="color:${opt.dangerInfo.badgeColor};font-weight:bold;">${opt.dangerInfo.score}% (${opt.dangerInfo.levelText})</span></td>
-                    <td><strong style="color:#f1c40f;">${opt.netEV}</strong></td>
-                    <td style="font-size:11px;color:#cbd5e1;">${opt.dangerInfo.primaryReason}</td>
+                    <td><strong style="color:#f1c40f;font-size:14px;">${opt.netEV}</strong></td>
+                    <td style="font-family:monospace; font-size:11px; color:#f8fafc; background:rgba(0,0,0,0.25); padding:4px 8px; border-radius:4px;">${opt.math.formulaString}</td>
                 `;
                 compTbody.appendChild(tr);
             });

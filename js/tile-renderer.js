@@ -1,9 +1,9 @@
 /**
- * 雀圣兵法 · 高保真麻将牌面矢量渲染引擎
- * 真实还原传统麻将牌面：
- * - 筒子 (1-9筒)：同心圆、传统大饼罗盘太阳菊纹 (1筒)、正统红蓝绿圆点排布
- * - 条子 (1-9条)：经典立体竹节图案与 1条“幺鸡”雀鸟图腾
- * - 万字 (1-9万)：经典传统书法汉字搭配朱砂红“萬”字
+ * 雀圣兵法 · 高保真麻将牌面矢量渲染引擎 (V2 质感与正统比例重制版)
+ * 严格按照传统骨玉麻将牌面尺寸与传统图腾重塑：
+ * - 筒子 (1-9筒)：大直径立体凹凸同心圆、1筒“大红花罗盘铜钱罗汉菊”
+ * - 条子 (1-9条)：粗壮立体双节玉竹节、1条国标正统“灵雀幺鸡”图腾 (饱满居中)
+ * - 万字 (1-9万)：经典金石书法字体排版、正统群青一至九字与赤朱砂“萬”字
  */
 
 class TileRenderer {
@@ -26,96 +26,22 @@ class TileRenderer {
     }
 
     /**
-     * 1-9 筒 (饼子)：标准同心圆与圆环
+     * 1-9 筒 (饼子)：大幅放大直径、立体饱满圆盘
      */
     static renderTong(val) {
-        // 经典配色：深海蓝 #1e50a2, 朱砂红 #c0392b, 苍绿 #137547
-        const BLUE = '#1e50a2';
-        const RED = '#c0392b';
-        const GREEN = '#137547';
+        const BLUE = '#124580';
+        const RED = '#b82a1e';
+        const GREEN = '#0f6e3f';
 
-        // 单个同心圆点辅助生成
-        const dot = (cx, cy, r, color = BLUE, innerColor = '#fff') => `
-            <circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="#0b2847" stroke-width="0.8"/>
-            <circle cx="${cx}" cy="${cy}" r="${r * 0.45}" fill="${innerColor}"/>
-            <circle cx="${cx}" cy="${cy}" r="${r * 0.18}" fill="${color}"/>
-        `;
-
-        let content = '';
-
-        switch (val) {
-            case 1:
-                // 1筒：经典大饼罗盘太阳菊纹
-                content = `
-                    <circle cx="25" cy="35" r="18" fill="#e74c3c" stroke="#962d22" stroke-width="1.2"/>
-                    <circle cx="25" cy="35" r="14" fill="#f1c40f" stroke="#c0392b" stroke-width="1"/>
-                    <circle cx="25" cy="35" r="9" fill="#137547"/>
-                    <circle cx="25" cy="35" r="5" fill="#e74c3c"/>
-                    <circle cx="25" cy="35" r="2.2" fill="#fff"/>
-                    ${[0, 45, 90, 135, 180, 225, 270, 315].map(deg => {
-                        const rad = (deg * Math.PI) / 180;
-                        const x = 25 + 11.5 * Math.cos(rad);
-                        const y = 35 + 11.5 * Math.sin(rad);
-                        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.4" fill="#c0392b"/>`;
-                    }).join('')}
-                `;
-                break;
-            case 2:
-                content = dot(25, 20, 6.5, GREEN) + dot(25, 50, 6.5, BLUE);
-                break;
-            case 3:
-                content = dot(14, 18, 5.5, BLUE) + dot(25, 35, 5.5, RED) + dot(36, 52, 5.5, GREEN);
-                break;
-            case 4:
-                content = dot(15, 22, 5.5, BLUE) + dot(35, 22, 5.5, GREEN) +
-                          dot(15, 48, 5.5, GREEN) + dot(35, 48, 5.5, BLUE);
-                break;
-            case 5:
-                content = dot(14, 19, 5, BLUE) + dot(36, 19, 5, GREEN) +
-                          dot(25, 35, 6, RED) +
-                          dot(14, 51, 5, GREEN) + dot(36, 51, 5, BLUE);
-                break;
-            case 6:
-                content = dot(16, 19, 5, GREEN) + dot(34, 19, 5, GREEN) +
-                          dot(16, 35, 5, RED) + dot(34, 35, 5, RED) +
-                          dot(16, 51, 5, RED) + dot(34, 51, 5, RED);
-                break;
-            case 7:
-                content = dot(13, 16, 4.2, GREEN) + dot(25, 22, 4.2, GREEN) + dot(37, 28, 4.2, GREEN) +
-                          dot(16, 42, 4.6, RED) + dot(34, 42, 4.6, RED) +
-                          dot(16, 56, 4.6, RED) + dot(34, 56, 4.6, RED);
-                break;
-            case 8:
-                content = dot(16, 15, 4.2, BLUE) + dot(34, 15, 4.2, BLUE) +
-                          dot(16, 28, 4.2, BLUE) + dot(34, 28, 4.2, BLUE) +
-                          dot(16, 42, 4.2, BLUE) + dot(34, 42, 4.2, BLUE) +
-                          dot(16, 55, 4.2, BLUE) + dot(34, 55, 4.2, BLUE);
-                break;
-            case 9:
-                content = dot(14, 18, 4.6, BLUE) + dot(25, 18, 4.6, BLUE) + dot(36, 18, 4.6, BLUE) +
-                          dot(14, 35, 4.6, RED) + dot(25, 35, 4.6, RED) + dot(36, 35, 4.6, RED) +
-                          dot(14, 52, 4.6, GREEN) + dot(25, 52, 4.6, GREEN) + dot(36, 52, 4.6, GREEN);
-                break;
-        }
-
-        return `<svg class="tile-svg" viewBox="0 0 50 70">${content}</svg>`;
-    }
-
-    /**
-     * 1-9 条 (索子)：立体竹节与 1条“幺鸡”雀鸟
-     */
-    static renderTiao(val) {
-        const GREEN = '#137547';
-        const RED = '#c0392b';
-        const BLUE_TIAO = '#1e50a2';
-
-        // 单根立体竹节辅助生成
-        const bamboo = (x, y, w = 5, h = 18, color = GREEN) => `
-            <g transform="translate(${x}, ${y})">
-                <rect x="0" y="0" width="${w}" height="${h}" rx="2.5" fill="${color}" stroke="#093d25" stroke-width="0.7"/>
-                <line x1="0.5" y1="${h * 0.35}" x2="${w - 0.5}" y2="${h * 0.35}" stroke="#fff" stroke-width="0.8"/>
-                <line x1="0.5" y1="${h * 0.65}" x2="${w - 0.5}" y2="${h * 0.65}" stroke="#fff" stroke-width="0.8"/>
-                <circle cx="${w / 2}" cy="${h / 2}" r="1" fill="${color === GREEN ? RED : GREEN}"/>
+        // 雕刻感立体同心同花纹饼图
+        const dot = (cx, cy, r, color = BLUE, innerColor = '#ffffff') => `
+            <g transform="translate(${cx}, ${cy})">
+                <!-- 外层雕刻深槽圆 -->
+                <circle cx="0" cy="0" r="${r}" fill="${color}" stroke="#061c30" stroke-width="0.9"/>
+                <!-- 中层浅色环带 -->
+                <circle cx="0" cy="0" r="${r * 0.65}" fill="${color}" stroke="${innerColor}" stroke-width="${Math.max(0.8, r * 0.16)}"/>
+                <!-- 核心内陷小圆点 -->
+                <circle cx="0" cy="0" r="${r * 0.22}" fill="${innerColor}"/>
             </g>
         `;
 
@@ -123,64 +49,79 @@ class TileRenderer {
 
         switch (val) {
             case 1:
-                // 1条：经典国标/川麻“幺鸡”（栖于翠竹上的灵雀图腾）
+                // 1筒：经典巨型罗盘太阳红花大彩筒（直径占满牌心，尊贵威严）
                 content = `
-                    <!-- 栖枝竹节 -->
-                    <rect x="12" y="52" width="26" height="4.5" rx="2" fill="${GREEN}" stroke="#07301c" stroke-width="0.7"/>
-                    <!-- 鸟身与羽翼 -->
-                    <ellipse cx="25" cy="34" rx="10" ry="14" fill="${GREEN}" stroke="#07301c" stroke-width="0.8"/>
-                    <ellipse cx="26" cy="33" rx="7" ry="10" fill="#27ae60"/>
-                    <path d="M 21 28 Q 14 34 20 44 Q 24 38 21 28 Z" fill="${RED}"/>
-                    <!-- 鸟头与冠羽 -->
-                    <circle cx="25" cy="18" r="6.5" fill="${GREEN}" stroke="#07301c" stroke-width="0.8"/>
-                    <!-- 鸟眼 -->
-                    <circle cx="23" cy="17" r="1.6" fill="#fff"/>
-                    <circle cx="23" cy="17" r="0.9" fill="#000"/>
-                    <!-- 鸟喙 -->
-                    <polygon points="18,17 14,19 18,21" fill="#e67e22"/>
-                    <!-- 冠翎与红顶 -->
-                    <path d="M 25 12 Q 27 6 32 7 Q 28 11 26 12 Z" fill="${RED}"/>
-                    <!-- 尾羽 -->
-                    <path d="M 23 46 Q 16 54 18 62 Q 22 56 24 47 Z" fill="${GREEN}"/>
-                    <path d="M 26 47 Q 28 56 31 63 Q 30 54 27 47 Z" fill="${RED}"/>
+                    <defs>
+                        <radialGradient id="sun-grad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stop-color="#fff" />
+                            <stop offset="40%" stop-color="#f1c40f" />
+                            <stop offset="85%" stop-color="#e67e22" />
+                            <stop offset="100%" stop-color="#c0392b" />
+                        </radialGradient>
+                    </defs>
+                    <!-- 外沿大铜钱红绿轮圈 -->
+                    <circle cx="25" cy="35" r="20" fill="#e74c3c" stroke="#7a1a11" stroke-width="1.2"/>
+                    <circle cx="25" cy="35" r="16.5" fill="#137547" stroke="#0a4628" stroke-width="0.8"/>
+                    <circle cx="25" cy="35" r="13" fill="#f1c40f" stroke="#b82a1e" stroke-width="0.8"/>
+                    <!-- 16 瓣放射状向日葵菊花花瓣 -->
+                    ${[0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5].map(deg => {
+                        const rad = (deg * Math.PI) / 180;
+                        const x = 25 + 14.5 * Math.cos(rad);
+                        const y = 35 + 14.5 * Math.sin(rad);
+                        return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.5" fill="#fff" stroke="#962d22" stroke-width="0.5"/>`;
+                    }).join('')}
+                    <!-- 中间翠玉轮圈 -->
+                    <circle cx="25" cy="35" r="9.5" fill="#137547" stroke="#07301c" stroke-width="0.6"/>
+                    <!-- 中央红日金丹 -->
+                    <circle cx="25" cy="35" r="5.5" fill="url(#sun-grad)"/>
+                    <circle cx="25" cy="35" r="2.2" fill="#fff"/>
                 `;
                 break;
             case 2:
-                content = bamboo(22.5, 12, 5, 20, GREEN) + bamboo(22.5, 38, 5, 20, BLUE_TIAO || GREEN);
+                // 2筒：超大双饼，上下严格对称
+                content = dot(25, 20.5, 9.2, GREEN) + dot(25, 49.5, 9.2, BLUE);
                 break;
             case 3:
-                content = bamboo(22.5, 10, 5, 18, GREEN) +
-                          bamboo(14, 38, 5, 20, GREEN) + bamboo(31, 38, 5, 20, GREEN);
+                // 3筒：斜向三饼，主副分明
+                content = dot(13.5, 17, 8.0, BLUE) +
+                          dot(25, 35, 8.5, RED) +
+                          dot(36.5, 53, 8.0, GREEN);
                 break;
             case 4:
-                content = bamboo(14, 12, 5, 20, GREEN) + bamboo(31, 12, 5, 20, RED) +
-                          bamboo(14, 38, 5, 20, RED) + bamboo(31, 38, 5, 20, GREEN);
+                // 4筒：大四喜四角均布
+                content = dot(15.5, 20, 8.2, BLUE) + dot(34.5, 20, 8.2, GREEN) +
+                          dot(15.5, 50, 8.2, GREEN) + dot(34.5, 50, 8.2, BLUE);
                 break;
             case 5:
-                content = bamboo(12, 12, 5, 19, GREEN) + bamboo(33, 12, 5, 19, GREEN) +
-                          bamboo(22.5, 25, 5, 20, RED) +
-                          bamboo(12, 39, 5, 19, GREEN) + bamboo(33, 39, 5, 19, GREEN);
+                // 5筒：经典梅花五饼（四角大饼环抱中央朱砂大红心）
+                content = dot(14.2, 18.2, 7.2, BLUE) + dot(35.8, 18.2, 7.2, GREEN) +
+                          dot(25, 35, 9.0, RED) +
+                          dot(14.2, 51.8, 7.2, GREEN) + dot(35.8, 51.8, 7.2, BLUE);
                 break;
             case 6:
-                content = bamboo(12, 12, 4.5, 19, GREEN) + bamboo(22.5, 12, 4.5, 19, GREEN) + bamboo(33, 12, 4.5, 19, GREEN) +
-                          bamboo(12, 38, 4.5, 19, GREEN) + bamboo(22.5, 38, 4.5, 19, GREEN) + bamboo(33, 38, 4.5, 19, GREEN);
+                // 6筒：上绿下红两列
+                content = dot(15.5, 17.5, 7.2, GREEN) + dot(34.5, 17.5, 7.2, GREEN) +
+                          dot(15.5, 35, 7.2, RED) + dot(34.5, 35, 7.2, RED) +
+                          dot(15.5, 52.5, 7.2, RED) + dot(34.5, 52.5, 7.2, RED);
                 break;
             case 7:
-                content = bamboo(22.5, 8, 4.5, 17, RED) +
-                          bamboo(12, 28, 4.5, 17, GREEN) + bamboo(22.5, 28, 4.5, 17, GREEN) + bamboo(33, 28, 4.5, 17, GREEN) +
-                          bamboo(12, 47, 4.5, 17, GREEN) + bamboo(22.5, 47, 4.5, 17, GREEN) + bamboo(33, 47, 4.5, 17, GREEN);
+                // 7筒：上斜三绿，下正四红
+                content = dot(11.5, 14, 5.8, GREEN) + dot(25, 21.5, 5.8, GREEN) + dot(38.5, 29, 5.8, GREEN) +
+                          dot(15.5, 43, 6.6, RED) + dot(34.5, 43, 6.6, RED) +
+                          dot(15.5, 57, 6.6, RED) + dot(34.5, 57, 6.6, RED);
                 break;
             case 8:
-                // 八条经典斜跨或双列4排
-                content = bamboo(14, 10, 4.5, 12, GREEN) + bamboo(31, 10, 4.5, 12, GREEN) +
-                          bamboo(14, 24, 4.5, 12, GREEN) + bamboo(31, 24, 4.5, 12, GREEN) +
-                          bamboo(14, 38, 4.5, 12, GREEN) + bamboo(31, 38, 4.5, 12, GREEN) +
-                          bamboo(14, 52, 4.5, 12, GREEN) + bamboo(31, 52, 4.5, 12, GREEN);
+                // 8筒：双列各4个清一色深蓝大饼
+                content = dot(15.5, 13.5, 6.0, BLUE) + dot(34.5, 13.5, 6.0, BLUE) +
+                          dot(15.5, 28, 6.0, BLUE) + dot(34.5, 28, 6.0, BLUE) +
+                          dot(15.5, 42.5, 6.0, BLUE) + dot(34.5, 42.5, 6.0, BLUE) +
+                          dot(15.5, 57, 6.0, BLUE) + dot(34.5, 57, 6.0, BLUE);
                 break;
             case 9:
-                content = bamboo(12, 10, 4.5, 15, RED) + bamboo(22.5, 10, 4.5, 15, RED) + bamboo(33, 10, 4.5, 15, RED) +
-                          bamboo(12, 28, 4.5, 15, GREEN) + bamboo(22.5, 28, 4.5, 15, GREEN) + bamboo(33, 28, 4.5, 15, GREEN) +
-                          bamboo(12, 46, 4.5, 15, GREEN) + bamboo(22.5, 46, 4.5, 15, GREEN) + bamboo(33, 46, 4.5, 15, GREEN);
+                // 9筒：九宫格饱满大饼（上蓝、中红、下绿）
+                content = dot(12.5, 16, 6.3, BLUE) + dot(25, 16, 6.3, BLUE) + dot(37.5, 16, 6.3, BLUE) +
+                          dot(12.5, 35, 6.3, RED) + dot(25, 35, 6.3, RED) + dot(37.5, 35, 6.3, RED) +
+                          dot(12.5, 54, 6.3, GREEN) + dot(25, 54, 6.3, GREEN) + dot(37.5, 54, 6.3, GREEN);
                 break;
         }
 
@@ -188,7 +129,120 @@ class TileRenderer {
     }
 
     /**
-     * 1-9 万 (字牌)：正统传统汉字书法与朱砂大“萬”字
+     * 1-9 条 (索子)：粗壮立体双节竹段，1条“幺鸡”雀鸟气度轩昂
+     */
+    static renderTiao(val) {
+        const GREEN = '#0f6e3f';
+        const RED = '#b82a1e';
+        const BLUE_TIAO = '#124580';
+
+        // 粗壮立体双节竹段辅助组件 (宽度从原 4.5 提升至 7.5-8.2)
+        const bamboo = (cx, cy, w = 7.8, h = 21, color = GREEN) => {
+            const x = cx - w / 2;
+            const y = cy - h / 2;
+            const innerColor = color === GREEN ? RED : GREEN;
+            return `
+                <g transform="translate(${x.toFixed(1)}, ${y.toFixed(1)})">
+                    <!-- 竹节柱体与双节凹凸曲线 -->
+                    <rect x="0" y="0" width="${w}" height="${h}" rx="${w / 2}" fill="${color}" stroke="#072b18" stroke-width="0.8"/>
+                    <!-- 上节环纹凸起 -->
+                    <rect x="-0.8" y="${(h * 0.32).toFixed(1)}" width="${w + 1.6}" height="2.2" rx="1.1" fill="#fff" opacity="0.85"/>
+                    <!-- 下节环纹凸起 -->
+                    <rect x="-0.8" y="${(h * 0.64).toFixed(1)}" width="${w + 1.6}" height="2.2" rx="1.1" fill="#fff" opacity="0.85"/>
+                    <!-- 节心玉核圆点 -->
+                    <circle cx="${w / 2}" cy="${h / 2}" r="1.3" fill="${innerColor}"/>
+                </g>
+            `;
+        };
+
+        let content = '';
+
+        switch (val) {
+            case 1:
+                // 1条：正统国标/川麻“幺鸡”（栖于翠竹枝头上的灵雀图腾，正中饱满）
+                content = `
+                    <!-- 栖枝翠竹横节 -->
+                    <rect x="9" y="55" width="32" height="6.5" rx="3.2" fill="${GREEN}" stroke="#062414" stroke-width="1"/>
+                    <line x1="20" y1="55" x2="20" y2="61.5" stroke="#fff" stroke-width="1.2"/>
+                    <line x1="30" y1="55" x2="30" y2="61.5" stroke="#fff" stroke-width="1.2"/>
+
+                    <!-- 爪足 -->
+                    <line x1="21" y1="48" x2="19" y2="55" stroke="#e67e22" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="29" y1="48" x2="31" y2="55" stroke="#e67e22" stroke-width="2" stroke-linecap="round"/>
+
+                    <!-- 灵雀体态羽翼（饱满居中） -->
+                    <ellipse cx="25" cy="34" rx="12" ry="16" fill="${GREEN}" stroke="#07301c" stroke-width="1"/>
+                    <!-- 腹部亮翠翡翠羽毛 -->
+                    <ellipse cx="26" cy="34" rx="8.5" ry="11.5" fill="#27ae60"/>
+                    <!-- 翅膀朱砂赤羽 -->
+                    <path d="M 21 26 Q 12 33 19 46 Q 24 38 21 26 Z" fill="${RED}" stroke="#7a1a11" stroke-width="0.8"/>
+                    
+                    <!-- 鸟颈与鸟首 -->
+                    <circle cx="25" cy="17" r="7.8" fill="${GREEN}" stroke="#07301c" stroke-width="1"/>
+                    <!-- 颊部赤斑 -->
+                    <circle cx="27" cy="18" r="3" fill="#e74c3c" opacity="0.7"/>
+                    <!-- 雀眼明目 -->
+                    <circle cx="22.5" cy="16" r="2.2" fill="#ffffff"/>
+                    <circle cx="22.5" cy="16" r="1.2" fill="#000000"/>
+                    <circle cx="22.0" cy="15.5" r="0.5" fill="#ffffff"/>
+                    
+                    <!-- 金喙尖喙 -->
+                    <polygon points="16,16 11,18 16,21" fill="#f39c12" stroke="#d35400" stroke-width="0.6"/>
+                    
+                    <!-- 凤点头朱砂顶冠 -->
+                    <path d="M 25 9.5 Q 28 3 34 4 Q 30 8.5 27 10 Z" fill="${RED}" stroke="#7a1a11" stroke-width="0.8"/>
+                    
+                    <!-- 灵动开屏双尾羽 -->
+                    <path d="M 22 47 Q 14 56 16 66 Q 21 59 23 48 Z" fill="${GREEN}" stroke="#07301c" stroke-width="0.8"/>
+                    <path d="M 27 48 Q 30 58 34 67 Q 33 57 28 48 Z" fill="${RED}" stroke="#7a1a11" stroke-width="0.8"/>
+                `;
+                break;
+            case 2:
+                content = bamboo(25, 21, 8.2, 23, GREEN) + bamboo(25, 49, 8.2, 23, BLUE_TIAO);
+                break;
+            case 3:
+                content = bamboo(25, 19, 8.0, 22, GREEN) +
+                          bamboo(15, 48, 8.0, 24, GREEN) + bamboo(35, 48, 8.0, 24, GREEN);
+                break;
+            case 4:
+                content = bamboo(15, 21, 8.0, 23, GREEN) + bamboo(35, 21, 8.0, 23, RED) +
+                          bamboo(15, 49, 8.0, 23, RED) + bamboo(35, 49, 8.0, 23, GREEN);
+                break;
+            case 5:
+                content = bamboo(14, 20, 7.6, 21, GREEN) + bamboo(36, 20, 7.6, 21, GREEN) +
+                          bamboo(25, 35, 8.2, 22, RED) +
+                          bamboo(14, 50, 7.6, 21, GREEN) + bamboo(36, 50, 7.6, 21, GREEN);
+                break;
+            case 6:
+                content = bamboo(13.5, 21, 7.2, 22, GREEN) + bamboo(25, 21, 7.2, 22, GREEN) + bamboo(36.5, 21, 7.2, 22, GREEN) +
+                          bamboo(13.5, 49, 7.2, 22, GREEN) + bamboo(25, 49, 7.2, 22, GREEN) + bamboo(36.5, 49, 7.2, 22, GREEN);
+                break;
+            case 7:
+                // 7条：顶上一根赤红竹，下排两组各3根翠竹
+                content = bamboo(25, 14, 7.8, 17, RED) +
+                          bamboo(13.5, 33, 7.0, 16, GREEN) + bamboo(25, 33, 7.0, 16, GREEN) + bamboo(36.5, 33, 7.0, 16, GREEN) +
+                          bamboo(13.5, 53, 7.0, 16, GREEN) + bamboo(25, 53, 7.0, 16, GREEN) + bamboo(36.5, 53, 7.0, 16, GREEN);
+                break;
+            case 8:
+                // 8条：双列各4根整齐挺拔的翠绿竹节
+                content = bamboo(15.5, 12.5, 7.6, 13.5, GREEN) + bamboo(34.5, 12.5, 7.6, 13.5, GREEN) +
+                          bamboo(15.5, 27.5, 7.6, 13.5, GREEN) + bamboo(34.5, 27.5, 7.6, 13.5, GREEN) +
+                          bamboo(15.5, 42.5, 7.6, 13.5, GREEN) + bamboo(34.5, 42.5, 7.6, 13.5, GREEN) +
+                          bamboo(15.5, 57.5, 7.6, 13.5, GREEN) + bamboo(34.5, 57.5, 7.6, 13.5, GREEN);
+                break;
+            case 9:
+                // 9条：三排各3根（上排赤红、中下翠绿）
+                content = bamboo(13.5, 16, 7.2, 16, RED) + bamboo(25, 16, 7.2, 16, RED) + bamboo(36.5, 16, 7.2, 16, RED) +
+                          bamboo(13.5, 35, 7.2, 16, GREEN) + bamboo(25, 35, 7.2, 16, GREEN) + bamboo(36.5, 35, 7.2, 16, GREEN) +
+                          bamboo(13.5, 54, 7.2, 16, GREEN) + bamboo(25, 54, 7.2, 16, GREEN) + bamboo(36.5, 54, 7.2, 16, GREEN);
+                break;
+        }
+
+        return `<svg class="tile-svg" viewBox="0 0 50 70">${content}</svg>`;
+    }
+
+    /**
+     * 1-9 万 (字牌)：正统传统汉字书法与朱砂大“萬”字 (完美居中与大字体)
      */
     static renderWan(val) {
         const numChars = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
