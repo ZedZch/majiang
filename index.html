@@ -34,6 +34,9 @@
         </div>
 
         <div class="header-actions">
+            <button class="btn btn-secondary" id="btn-toggle-danger" title="切换是否在手牌显示放炮危险度角标">
+                👁️ 危险角标: 开
+            </button>
             <button class="btn btn-ai-hint" id="btn-deep-thinking" title="查看当前局势下完全合乎逻辑的大师思考过程">
                 💡 战术推演 (AI思考过程)
             </button>
@@ -151,9 +154,16 @@
                 <div class="thinking-tabs">
                     <button class="tab-btn active" data-target="panel-optimal">🎯 最佳切牌与思考过程</button>
                     <button class="tab-btn" data-target="panel-comparison">📊 各切牌方案横向对比</button>
+                    <button class="tab-btn" data-target="panel-reaction" id="tab-btn-reaction" style="display:none; color:#f1c40f;">🔔 碰/杠/胡 战术决策</button>
                     <button class="tab-btn" data-target="panel-opponents">🕵️ 三家对手深度读牌镜像</button>
                     <button class="tab-btn" data-target="panel-defense">🛡️ 牌河安全与筋壁防炮</button>
+                    <button class="tab-btn" data-target="panel-logic">📐 算法与推演逻辑揭秘</button>
                     <button class="tab-btn" data-target="panel-theory">📖 进阶麻将雀理讲堂</button>
+                </div>
+
+                <!-- 选项卡 0：碰杠胡实时决策建议 -->
+                <div class="tab-content-panel" id="panel-reaction" style="display:none;">
+                    <div id="reaction-decision-container"></div>
                 </div>
 
                 <!-- 选项卡 1：推荐切牌与四步深度推理 -->
@@ -204,7 +214,47 @@
                     </div>
                 </div>
 
-                <!-- 选项卡 5：进阶讲堂 -->
+                <!-- 选项卡 5：算法与逻辑揭秘 -->
+                <div class="tab-content-panel" id="panel-logic" style="display:none;">
+                    <div class="reasoning-step-card" style="margin-bottom:12px; border-left-color:#3498db;">
+                        <h4 style="color:#3498db; margin-bottom:6px;">一、向听数（Shanten）与递归面子拆解算法</h4>
+                        <p style="font-size:13px; line-height:1.7; color:#cbd5e1;">
+                            系统底层采用<strong>无字牌专用递归回溯树算法</strong>。枚举手牌中每一个可能的将牌（对子），随后对其余牌进行深度优先搜索（DFS），拆解出最佳的顺子、刻子与两面/坎张搭子组合：<br>
+                            $$\text{标准向听数} = 2 \times (\text{目标面子数} - \text{已有面子数}) - \text{搭子数} - (\text{是否有将 ? } 1 : 0)$$
+                            同时独立计算七对向听数（$6 - \text{对子数}$），取两者最小值。结合全场牌山与已见牌，计算使向听数下降的所有<strong>有效进张种数与未见张数</strong>。
+                        </p>
+                    </div>
+
+                    <div class="reasoning-step-card" style="margin-bottom:12px; border-left-color:#e67e22;">
+                        <h4 style="color:#e67e22; margin-bottom:6px;">二、对手读牌与手牌镜像反推逻辑</h4>
+                        <p style="font-size:13px; line-height:1.7; color:#cbd5e1;">
+                            系统通过三重动态特征捕捉对手意图：<br>
+                            1. <strong>换三张逆推</strong>：换出的花色代表起手不超过3-4张；换入的花色手牌剧增3张，成为做牌核心。<br>
+                            2. <strong>变步点抓听</strong>：对手从打定缺牌转为手切打出第一张非缺门牌的巡目为“变步点”。此时通常手牌已达到一向听或听牌状态！<br>
+                            3. <strong>清一色特征识别</strong>：当对手连续打出某一门非缺门中张，且副露全部集中于另一门时，清一色置信度升至 80%+，威胁等级拉满。
+                        </p>
+                    </div>
+
+                    <div class="reasoning-step-card" style="margin-bottom:12px; border-left-color:#9b59b6;">
+                        <h4 style="color:#9b59b6; margin-bottom:6px;">三、筋牌（Suji）与壁牌（Kabe）几何防守模型</h4>
+                        <p style="font-size:13px; line-height:1.7; color:#cbd5e1;">
+                            • <strong>真筋 vs 半筋</strong>：对手打过4，如果他是两面听（23听14），打4即自断14两面，因此1为真筋绝对安全；但7为半筋，因为对手仍可能持有56听47！<br>
+                            • <strong>No-Chance 断牌</strong>：当全场4张7全部现明时，对手绝不可能持有78听69，8与9获得几何阻断保护。<br>
+                            • <strong>定缺门绝对安全</strong>：对手定缺花色的牌放炮率为绝对 0%。
+                        </p>
+                    </div>
+
+                    <div class="reasoning-step-card" style="border-left-color:#2ecc71;">
+                        <h4 style="color:#2ecc71; margin-bottom:6px;">四、攻守平衡净期望值（Net EV）决策公式</h4>
+                        <p style="font-size:13px; line-height:1.7; color:#cbd5e1;">
+                            每一张候选牌的推荐权重不仅看牌效，更要严控放炮损失：<br>
+                            $$\text{Net EV} = \text{进张速度价值} - \text{放炮危险度} \times \text{对手预估番数} \times \text{防守权重}$$
+                            当手牌向听数落后（$\ge 2$向听）且对手有高番威胁时，防守权重提高至 1.4，系统会强力推荐“拆牌弃胡跟打安全牌”；当自身清一色听牌时，全力进攻！
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 选项卡 6：进阶讲堂 -->
                 <div class="tab-content-panel" id="panel-theory" style="display:none;">
                     <div class="reasoning-step-card" style="margin-bottom:12px;">
                         <h4 style="color:#f1c40f;">川麻血战到底四大高级战术原则</h4>
@@ -307,6 +357,7 @@
     <!-- 引入核心脚本 -->
     <script src="js/config.js"></script>
     <script src="js/audio.js"></script>
+    <script src="js/tile-renderer.js"></script>
     <script src="js/mahjong-logic.js"></script>
     <script src="js/ai-analyzer.js"></script>
     <script src="js/ai-player.js"></script>

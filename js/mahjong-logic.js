@@ -140,8 +140,9 @@ class MahjongLogic {
             return false;
         }
 
-        const totalTiles = handTiles.length + melds.length * 3;
-        if (totalTiles !== 14) {
+        // 规则2：手牌张数必须严格符合 (4 - 副露数) * 3 + 2 (无论副露是碰还是4张的杠)
+        const expectedTiles = (4 - melds.length) * 3 + 2;
+        if (handTiles.length !== expectedTiles) {
             return false;
         }
 

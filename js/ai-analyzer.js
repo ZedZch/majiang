@@ -488,6 +488,118 @@ class AIAnalyzer {
 
         return steps;
     }
+
+    /**
+     * 针对他人弃牌产生的【碰 / 杠 / 胡】决策进行深度战术推演
+     * @param {Object} reactionInfo { tile, fromSeat, reactions: ['HU', 'GANG', 'PENG'] }
+     * @param {Object} gameState 全局牌局状态
+     * @returns {Object} 碰杠决策报告
+     */
+    static analyzeMeldReaction(reactionInfo, gameState) {
+        if (!reactionInfo) return null;
+        const { tile, fromSeat, reactions = [] } = reactionInfo;
+        const myPlayer = gameState.players[0];
+        const opponent = gameState.players[fromSeat];
+
+        const results = [];
+
+        // 1. 胡牌推演
+        if (reactions.includes('HU')) {
+            const testHand = [...myPlayer.hand, tile];
+            const fanInfo = MahjongLogic.evaluateHandFans(testHand, myPlayer.melds, myPlayer.queSuit, tile, false);
+            results.push({
+                action: 'HU',
+                recommendation: '强烈建议：立即胡牌！',
+                badge: '必胡',
+                badgeColor: '#c0392b',
+                summary: `荣和点炮胡！从【${opponent.name}】处收取 ${fanInfo.totalFan} 番大奖！`,
+                details: `• 番型构成：${fanInfo.patterns.map(p => `${p.name} (${p.fan}番)`).join('、')}。\n• 血战到底战略法则：在川渝血战到底中，先胡牌不仅锁定得分落袋为安，而且胡牌后不会放炮、不会查叫，风险降为绝对0，必须毫不犹豫胡牌！`
+            });
+        }
+
+        // 2. 杠牌推演 (直杠)
+        if (reactions.includes('GANG')) {
+            results.push({
+                action: 'GANG',
+                recommendation: '建议开杠（点杠）',
+                badge: '直杠',
+                badgeColor: '#8e44ad',
+                summary: `直杠【${formatTile(tile)}】！直接从点杠者【${opponent.name}】处赢取 2 分，并获得开杠补牌权。`,
+                details: `• 收益分析：开杠后立即摸一张杠牌，有概率触发【杠上开花】（额外+1番）；且形成4张同色【根】（全手牌倍率加倍）。\n• 风险评估：如果此时场上有做清一色的听牌对手，开杠后摸到的生张不可防守，注意杠后切牌安全度。`
+            });
+        }
+
+        // 3. 碰牌推演 (深度权衡)
+        if (reactions.includes('PENG')) {
+            // 计算碰之前的向听数
+            const currentShanten = MahjongLogic.getHandShanten(myPlayer.hand, myPlayer.melds, myPlayer.queSuit);
+
+            // 模拟碰之后的剩余手牌
+            const testHand = [...myPlayer.hand];
+            let removed = 0;
+            for (let i = testHand.length - 1; i >= 0 && removed < 2; i--) {
+                if (testHand[i].suit === tile.suit && testHand[i].val === tile.val) {
+                    testHand.splice(i, 1);
+                    removed++;
+                }
+            }
+            const testMelds = [...myPlayer.melds, { type: 'PENG', tiles: [tile, tile, tile] }];
+            
+            // 测算碰之后切哪张最好，以及切后的向听数
+            const discardOpts = MahjongLogic.evaluateDiscardOptions(testHand, testMelds, myPlayer.queSuit, gameState.visibleCounts);
+            const opponentProfiles = this.analyzeOpponents(gameState);
+
+            let bestAfterCut = discardOpts[0];
+            let afterShanten = bestAfterCut ? bestAfterCut.shanten : currentShanten;
+            let cutTileDanger = bestAfterCut ? this.evaluateTileTotalDanger(bestAfterCut.tile, opponentProfiles, gameState) : { score: 0, levelText: '未知' };
+
+            // 检查是否在做清一色
+            const isPureSuitPursuit = myPlayer.hand.filter(t => t.suit !== myPlayer.queSuit && t.suit === tile.suit).length >= 6;
+
+            let pengAdvice = '建议碰牌';
+            let pengBadge = '推荐碰';
+            let pengColor = '#2980b9';
+            let pengReason = '';
+
+            if (isPureSuitPursuit) {
+                pengAdvice = '强烈建议碰牌！加速清一色成型';
+                pengBadge = '加速清一色';
+                pengColor = '#27ae60';
+                pengReason = `此牌为你的主战花色【${SUIT_NAMES[tile.suit]}】，碰牌后直接将手牌压缩，向听数由 ${currentShanten}向听 缩短至 ${afterShanten}向听，极大加快4番/8番清一色推进速度！碰后推荐切掉【${bestAfterCut ? formatTile(bestAfterCut.tile) : '杂牌'}】。`;
+            } else if (afterShanten < currentShanten) {
+                pengAdvice = '建议碰牌！向听数前进';
+                pengBadge = '推进向听';
+                pengColor = '#2ecc71';
+                pengReason = `碰牌能让手牌从 ${currentShanten}向听 直接推进至 ${afterShanten}向听，进张广度提高。碰后建议切出【${formatTile(bestAfterCut.tile)}】(放炮危险度 ${cutTileDanger.score}% - ${cutTileDanger.levelText})。`;
+            } else if (cutTileDanger.score >= 60) {
+                pengAdvice = '不建议碰牌！碰牌后需切高危生张，易被反杀';
+                pengBadge = '慎碰防炮';
+                pengColor = '#e67e22';
+                pengReason = `虽然可以碰，但碰后手牌必须打出【${formatTile(bestAfterCut.tile)}】，而此牌在场上极度危险 (${cutTileDanger.score}% 放炮率)，此时贪碰得不偿失，建议【过牌】留存门清和防守牌。`;
+            } else {
+                pengAdvice = '可碰可过（依局势决定）';
+                pengBadge = '均势平稳';
+                pengColor = '#3498db';
+                pengReason = `碰牌后向听数保持为 ${afterShanten}向听。如果你想快速叫牌，可以碰；如果你想保留门清做大牌或暗杠做根，可以选择过牌。`;
+            }
+
+            results.push({
+                action: 'PENG',
+                recommendation: pengAdvice,
+                badge: pengBadge,
+                badgeColor: pengColor,
+                summary: `碰【${formatTile(tile)}】决策分析`,
+                details: pengReason
+            });
+        }
+
+        return {
+            tile,
+            fromSeat,
+            opponentName: opponent ? opponent.name : '对手',
+            results
+        };
+    }
 }
 
 if (typeof module !== 'undefined') {

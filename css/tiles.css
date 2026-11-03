@@ -1,6 +1,6 @@
 /**
  * 雀圣兵法 · 麻将牌 3D 拟真视觉样式
- * 支持骨玉象牙白前牌面、翡翠绿牌背、阴影立体斜边、高保真花色排版
+ * 支持骨玉象牙白前牌面、翡翠绿牌背、阴影立体斜边、高保真花色排版与清晰角标
  */
 
 :root {
@@ -11,9 +11,6 @@
     --tile-bg-back: linear-gradient(145deg, #1fa366 0%, #12693f 60%, #0a4026 100%);
     --tile-border: #d4caa8;
     --tile-shadow: 0 4px 10px rgba(0, 0, 0, 0.4), 0 2px 0 #b3a586, inset 0 1px 1px rgba(255, 255, 255, 0.9);
-    --tile-wan-color: #c3272b;
-    --tile-tiao-color: #1b7e4a;
-    --tile-tong-color: #1e50a2;
 }
 
 /* 基础麻将牌单体 */
@@ -39,41 +36,41 @@
 
 /* 手牌未打出时的悬停微抬效果 */
 .mj-tile.interactive:hover {
-    transform: translateY(-10px) scale(1.04);
-    box-shadow: 0 12px 18px rgba(0, 0, 0, 0.45), 0 4px 0 #b3a586;
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 10px 16px rgba(0, 0, 0, 0.45), 0 3px 0 #b3a586;
     z-index: 10;
 }
 
-/* 选中状态 */
+/* 选中状态（抬起更高，金色边框） */
 .mj-tile.selected {
-    transform: translateY(-14px) scale(1.05);
-    border: 2px solid #f39c12;
-    box-shadow: 0 14px 22px rgba(243, 156, 18, 0.4), 0 4px 0 #b3a586;
-    z-index: 12;
+    transform: translateY(-16px) scale(1.06);
+    border: 2px solid #f39c12 !important;
+    box-shadow: 0 14px 22px rgba(243, 156, 18, 0.5), 0 4px 0 #b3a586 !important;
+    z-index: 15;
 }
 
 /* AI 推荐打出的高光发光光环 */
 .mj-tile.ai-recommended {
-    border: 2px solid #2ecc71 !important;
-    animation: recommend-pulse 1.8s infinite;
+    border: 2px solid #f1c40f !important;
+    animation: recommend-pulse 1.6s infinite;
 }
 
 @keyframes recommend-pulse {
     0% {
-        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0.7), 0 4px 10px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 0 0 0 rgba(241, 196, 15, 0.8), 0 4px 10px rgba(0, 0, 0, 0.4);
     }
     70% {
-        box-shadow: 0 0 0 10px rgba(46, 204, 113, 0), 0 4px 10px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 0 0 8px rgba(241, 196, 15, 0), 0 4px 10px rgba(0, 0, 0, 0.4);
     }
     100% {
-        box-shadow: 0 0 0 0 rgba(46, 204, 113, 0), 0 4px 10px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 0 0 0 rgba(241, 196, 15, 0), 0 4px 10px rgba(0, 0, 0, 0.4);
     }
 }
 
-/* 定缺门强制高亮（或非定缺门禁用暗化） */
+/* 定缺门强制高亮（出牌期定缺门未打完时提示） */
 .mj-tile.must-discard-que {
     border: 2px solid #e74c3c;
-    animation: que-pulse 1.5s infinite alternate;
+    animation: que-pulse 1.4s infinite alternate;
 }
 
 @keyframes que-pulse {
@@ -82,8 +79,8 @@
 }
 
 .mj-tile.disabled-non-que {
-    opacity: 0.45;
-    filter: grayscale(60%);
+    opacity: 0.35;
+    filter: grayscale(70%);
     cursor: not-allowed;
     pointer-events: none;
 }
@@ -106,21 +103,29 @@
 
 /* 小号牌面（用于牌河、副露以及紧凑列表） */
 .mj-tile.tile-sm {
-    --tile-width: 34px;
-    --tile-height: 48px;
+    --tile-width: 33px;
+    --tile-height: 47px;
     --tile-radius: 4px;
     font-size: 11px;
 }
 
 .mj-tile.tile-xs {
-    --tile-width: 26px;
-    --tile-height: 36px;
+    --tile-width: 25px;
+    --tile-height: 35px;
     --tile-radius: 3px;
     font-size: 9px;
 }
 
-/* 牌面图案内联排布 */
-.mj-content {
+/* 牌面矢量图体内置 */
+.tile-svg {
+    width: 86%;
+    height: 88%;
+    display: block;
+    pointer-events: none;
+}
+
+/* 万字牌书法排版 */
+.wan-face-container {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -130,83 +135,64 @@
     pointer-events: none;
 }
 
-/* 万字牌 */
-.mj-content.suit-wan .wan-val {
-    font-size: 20px;
+.wan-num-glyph {
+    font-family: 'Kaiti', 'STKaiti', 'SimSun', 'Songti SC', serif;
+    font-size: 22px;
     font-weight: 900;
-    line-height: 1.1;
-    color: var(--tile-wan-color);
+    color: #1e50a2;
+    line-height: 1;
 }
 
-.mj-content.suit-wan .wan-char {
-    font-size: 14px;
-    font-weight: bold;
+.wan-char-glyph {
+    font-family: 'Kaiti', 'STKaiti', 'SimSun', 'Songti SC', serif;
+    font-size: 18px;
+    font-weight: 900;
+    color: #c0392b;
     line-height: 1;
-    color: var(--tile-wan-color);
     margin-top: 1px;
 }
 
-/* 条子牌 */
-.mj-content.suit-tiao .tiao-val {
-    font-size: 18px;
-    font-weight: 900;
-    line-height: 1.1;
-    color: var(--tile-tiao-color);
-}
+.mj-tile.tile-sm .wan-num-glyph { font-size: 15px; }
+.mj-tile.tile-sm .wan-char-glyph { font-size: 12px; }
 
-.mj-content.suit-tiao .tiao-char {
-    font-size: 13px;
-    font-weight: bold;
-    color: var(--tile-tiao-color);
-}
+.mj-tile.tile-xs .wan-num-glyph { font-size: 11px; }
+.mj-tile.tile-xs .wan-char-glyph { font-size: 9px; }
 
-/* 筒子牌 */
-.mj-content.suit-tong .tong-val {
-    font-size: 18px;
-    font-weight: 900;
-    line-height: 1.1;
-    color: var(--tile-tong-color);
-}
-
-.mj-content.suit-tong .tong-char {
-    font-size: 13px;
-    font-weight: bold;
-    color: var(--tile-tong-color);
-}
-
-/* 缩放尺寸适配 */
-.mj-tile.tile-sm .wan-val,
-.mj-tile.tile-sm .tiao-val,
-.mj-tile.tile-sm .tong-val {
-    font-size: 13px;
-}
-
-.mj-tile.tile-sm .wan-char,
-.mj-tile.tile-sm .tiao-char,
-.mj-tile.tile-sm .tong-char {
-    font-size: 10px;
-}
-
-/* 危险度指示小胶囊（悬浮在牌角） */
+/* 明确的放炮危险度角标 & AI推荐出牌角标 */
 .danger-badge {
     position: absolute;
-    top: -6px;
+    top: -8px;
     right: -6px;
     font-size: 9px;
     font-weight: 800;
     color: #fff;
     padding: 1px 4px;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
     pointer-events: none;
-    z-index: 5;
+    z-index: 6;
     line-height: 1.2;
+    white-space: nowrap;
+}
+
+.danger-badge.recommend {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: #fff;
+    font-weight: 900;
+    box-shadow: 0 0 8px rgba(243, 156, 18, 0.9);
+    border: 1px solid #ffd572;
+    transform: scale(1.05);
 }
 
 .danger-badge.safe { background: #27ae60; }
-.danger-badge.caution { background: #f39c12; }
+.danger-badge.caution { background: #d39e00; }
 .danger-badge.danger { background: #e67e22; }
-.danger-badge.critical { background: #c0392b; }
+.danger-badge.critical { background: #c0392b; animation: crit-flash 1s infinite alternate; }
+
+@keyframes crit-flash {
+    from { opacity: 0.85; }
+    to { opacity: 1; transform: scale(1.05); }
+}
 
 /* 标记是否定缺的右上角提示角标 */
 .que-indicator {
@@ -234,6 +220,6 @@
     top: 15%;
     height: 70%;
     width: 2px;
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
     border-radius: 1px;
 }

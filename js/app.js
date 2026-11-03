@@ -36,6 +36,7 @@ class MahjongApp {
             myMelds: document.getElementById('my-melds'),
             actionBar: document.getElementById('action-bar'),
             btnDiscard: document.getElementById('btn-discard'),
+            btnToggleDanger: document.getElementById('btn-toggle-danger'),
             btnDeepThinking: document.getElementById('btn-deep-thinking'),
             btnTileMatrix: document.getElementById('btn-tile-matrix'),
             btnScenarios: document.getElementById('btn-scenarios'),
@@ -56,6 +57,28 @@ class MahjongApp {
         this.dom.btnTileMatrix.addEventListener('click', () => this.openTileMatrixModal());
         this.dom.btnScenarios.addEventListener('click', () => this.openScenariosModal());
         this.dom.btnDiscard.addEventListener('click', () => this.executePlayerDiscard());
+
+        // 切换手牌放炮危险度角标
+        if (this.dom.btnToggleDanger) {
+            this.dom.btnToggleDanger.addEventListener('click', () => {
+                this.showDangerOverlay = !this.showDangerOverlay;
+                this.dom.btnToggleDanger.innerText = `👁️ 危险角标: ${this.showDangerOverlay ? '开' : '关'}`;
+                this.renderMySeat();
+            });
+        }
+
+        // 点击牌桌空白区域取消选牌
+        const table = document.querySelector('.mahjong-table');
+        if (table) {
+            table.addEventListener('click', (e) => {
+                if (!e.target.closest('.mj-tile') && !e.target.closest('.action-bar') && !e.target.closest('.modal-card')) {
+                    if (this.selectedDiscardTile) {
+                        this.selectedDiscardTile = null;
+                        this.renderMySeat();
+                    }
+                }
+            });
+        }
 
         // 关闭模态弹窗统一委托
         document.querySelectorAll('.modal-close-btn').forEach(btn => {
@@ -141,11 +164,11 @@ class MahjongApp {
             score: 1000
         }));
 
-        // 发牌：每人发 13 张牌，庄家多摸第 14 张
+        // 发牌：每人起手 13 张牌 (换三张与定缺期间保持 13 张标准手牌)
         for (let i = 0; i < 4; i++) {
             this.players[i].hand = this.wall.splice(0, 13);
+            this.players[i].drawTile = null;
         }
-        this.players[this.dealer].drawTile = this.wall.shift();
 
         // 规范整理手牌
         for (let i = 0; i < 4; i++) {
@@ -297,13 +320,11 @@ class MahjongApp {
         myPlayer.swapOutTiles = myTiles;
         myPlayer.swapOutSuit = myTiles[0].suit;
 
-        // 从自家手牌移除换出的 3 张牌
-        const combinedHand = myPlayer.drawTile ? [...myPlayer.hand, myPlayer.drawTile] : [...myPlayer.hand];
+        // 从自家手牌移除换出的 3 张牌 (保持手牌10张)
         for (const t of myTiles) {
-            const idx = combinedHand.findIndex(x => x.uid === t.uid);
-            if (idx !== -1) combinedHand.splice(idx, 1);
+            const idx = myPlayer.hand.findIndex(x => x.uid === t.uid);
+            if (idx !== -1) myPlayer.hand.splice(idx, 1);
         }
-        myPlayer.hand = combinedHand;
         myPlayer.drawTile = null;
 
         // 3 位 AI 玩家也各自选出 3 张
@@ -406,6 +427,8 @@ class MahjongApp {
      */
     handlePlayerTurn() {
         this.currentTurn = 0;
+        this.clearActionOptions();
+        this.pendingReaction = null;
         this.renderAll();
 
         const myHand = this.players[0].hand;
@@ -417,7 +440,7 @@ class MahjongApp {
             const fanInfo = MahjongLogic.evaluateHandFans(totalHand, this.players[0].melds, this.players[0].queSuit, drawTile, true);
             this.showActionOption({
                 type: 'HU',
-                text: `自摸胡 (${fanInfo.totalFan}番)`,
+                text: `🎉 自摸胡 (${fanInfo.totalFan}番)`,
                 action: () => this.executePlayerHu()
             });
         }
@@ -425,16 +448,19 @@ class MahjongApp {
         // 检查暗杠与弯杠 (补杠)
         this.checkSelfGang(totalHand);
 
-        // 高亮出牌候选
+        // 高亮出牌候选辅助按钮
         this.dom.btnDiscard.style.display = 'inline-flex';
     }
 
     checkSelfGang(tiles) {
+        const myPlayer = this.players[0];
+
+        // 1. 检查暗杠 (手牌+摸牌有4张相同且非定缺门)
         const counts = MahjongLogic.tilesToCountArray(tiles);
         for (let i = 0; i < 27; i++) {
             if (counts[i] === 4) {
                 const gangTile = MahjongLogic.indexToTile(i);
-                if (gangTile.suit !== this.players[0].queSuit) {
+                if (gangTile.suit !== myPlayer.queSuit) {
                     this.showActionOption({
                         type: 'GANG',
                         text: `暗杠【${formatTile(gangTile)}】`,
@@ -443,6 +469,87 @@ class MahjongApp {
                 }
             }
         }
+
+        // 2. 检查弯杠 / 补杠 (已碰的花色，手上又摸到或持有第4张)
+        for (const meld of myPlayer.melds) {
+            if (meld.type === 'PENG') {
+                const meldTile = meld.tiles[0];
+                const matchingTile = tiles.find(t => t.suit === meldTile.suit && t.val === meldTile.val);
+                if (matchingTile && matchingTile.suit !== myPlayer.queSuit) {
+                    this.showActionOption({
+                        type: 'GANG',
+                        text: `补杠【${formatTile(matchingTile)}】`,
+                        action: () => this.executePlayerBuGang(meld, matchingTile)
+                    });
+                }
+            }
+        }
+    }
+
+    executePlayerAnGang(gangTile) {
+        soundEngine.playGang();
+        this.clearActionOptions();
+        this.pendingReaction = null;
+        const myPlayer = this.players[0];
+
+        const allTiles = myPlayer.drawTile ? [...myPlayer.hand, myPlayer.drawTile] : [...myPlayer.hand];
+        const meldCards = [];
+        const newHand = [];
+
+        for (const t of allTiles) {
+            if (t.suit === gangTile.suit && t.val === gangTile.val) {
+                meldCards.push(t);
+            } else {
+                newHand.push(t);
+            }
+        }
+
+        myPlayer.hand = newHand;
+        myPlayer.drawTile = null;
+        myPlayer.melds.push({ type: 'GANG', subType: 'AN_GANG', tiles: meldCards });
+        this.showToast(`暗杠【${formatTile(gangTile)}】成功（下雨+2分）！开杠摸牌...`);
+
+        // 开杠补摸一张牌
+        if (this.wall.length > 0) {
+            myPlayer.drawTile = this.wall.shift();
+            soundEngine.playDraw();
+        }
+
+        this.currentTurn = 0;
+        this.updateVisibleCounts();
+        this.renderAll();
+        this.handlePlayerTurn();
+    }
+
+    executePlayerBuGang(pengMeld, tile) {
+        soundEngine.playGang();
+        this.clearActionOptions();
+        this.pendingReaction = null;
+        const myPlayer = this.players[0];
+
+        if (myPlayer.drawTile && myPlayer.drawTile.uid === tile.uid) {
+            myPlayer.drawTile = null;
+        } else {
+            const idx = myPlayer.hand.findIndex(t => t.uid === tile.uid);
+            if (idx !== -1) myPlayer.hand.splice(idx, 1);
+        }
+
+        pengMeld.type = 'GANG';
+        pengMeld.subType = 'BU_GANG';
+        pengMeld.tiles.push(tile);
+
+        this.showToast(`弯杠【${formatTile(tile)}】成功（刮风+1分）！开杠摸牌...`);
+
+        // 开杠补摸一张牌
+        if (this.wall.length > 0) {
+            myPlayer.drawTile = this.wall.shift();
+            soundEngine.playDraw();
+        }
+
+        this.currentTurn = 0;
+        this.updateVisibleCounts();
+        this.renderAll();
+        this.handlePlayerTurn();
     }
 
     /**
@@ -486,27 +593,108 @@ class MahjongApp {
         this.updateVisibleCounts();
         this.renderAll();
 
-        // 触发全场对该打出牌的反应 (下家、对家、上家 是否吃碰杠胡)
+        // 触发全场对该打出牌的反应 (胡、杠、碰)
         this.processDiscardReactions(0, tileToDiscard);
     }
 
     /**
-     * 处理打出牌后的全场响应（胡、杠、碰）
+     * 处理打出牌后的全场响应（胡优先、碰杠次之）
      */
     processDiscardReactions(discarderSeat, tile) {
-        // 顺时针顺序检查其余3位玩家反应
+        this.clearActionOptions();
+
+        // 1. 优先判定【胡牌】（全场绝对最高优先级）
+        let humanCanHu = false;
+        let humanHuFanInfo = null;
+
+        if (discarderSeat !== 0 && !this.players[0].isHu && tile.suit !== this.players[0].queSuit) {
+            const testHand = [...this.players[0].hand, tile];
+            if (MahjongLogic.checkHu(testHand, this.players[0].melds, this.players[0].queSuit)) {
+                humanCanHu = true;
+                humanHuFanInfo = MahjongLogic.evaluateHandFans(testHand, this.players[0].melds, this.players[0].queSuit, tile, false);
+            }
+        }
+
+        // 检查 AI 是否有可以胡牌的
+        const aiHuList = [];
+        for (let s = 1; s <= 3; s++) {
+            if (s !== discarderSeat && !this.players[s].isHu && tile.suit !== this.players[s].queSuit) {
+                const reaction = AIPlayerController.checkReactionToDiscard(this.players[s], tile, discarderSeat, this.getGameState());
+                if (reaction && reaction.action === 'HU') {
+                    aiHuList.push({ seat: s, fanInfo: reaction.fanInfo });
+                }
+            }
+        }
+
+        // 如果玩家自己可以胡牌：立即弹出专属胡牌大按钮，绝不被任何AI剥夺！
+        if (humanCanHu) {
+            this.pendingReaction = {
+                tile,
+                fromSeat: discarderSeat,
+                reactions: ['HU'],
+                fanInfo: humanHuFanInfo
+            };
+
+            this.showActionOption({
+                type: 'HU',
+                text: `🎉 点炮胡 (${humanHuFanInfo.totalFan}番)`,
+                action: () => {
+                    this.executePlayerDianPaoHu(tile, discarderSeat, humanHuFanInfo);
+                    aiHuList.forEach(aiHu => this.executeAIHu(aiHu.seat, tile, discarderSeat, aiHu.fanInfo));
+                }
+            });
+
+            this.showActionOption({
+                type: 'PASS',
+                text: '过',
+                action: () => {
+                    this.clearActionOptions();
+                    this.pendingReaction = null;
+                    if (aiHuList.length > 0) {
+                        aiHuList.forEach(aiHu => this.executeAIHu(aiHu.seat, tile, discarderSeat, aiHu.fanInfo));
+                        return;
+                    }
+                    this.checkPostHuReactions(discarderSeat, tile);
+                }
+            });
+            return;
+        }
+
+        // 玩家不能胡，但有 AI 可以胡牌
+        if (aiHuList.length > 0) {
+            aiHuList.forEach(aiHu => this.executeAIHu(aiHu.seat, tile, discarderSeat, aiHu.fanInfo));
+            return;
+        }
+
+        // 2. 无人胡牌，检查杠牌与碰牌
+        this.checkPostHuReactions(discarderSeat, tile);
+    }
+
+    checkPostHuReactions(discarderSeat, tile) {
+        // 检查人类玩家是否可以直杠或碰
+        if (discarderSeat !== 0 && !this.players[0].isHu && tile.suit !== this.players[0].queSuit) {
+            const myReactions = this.checkMyReactionToDiscard(tile, discarderSeat).filter(r => r.action !== 'HU');
+            if (myReactions.length > 0) {
+                this.pendingReaction = {
+                    tile,
+                    fromSeat: discarderSeat,
+                    reactions: myReactions.map(r => r.action)
+                };
+                this.promptPlayerReactions(myReactions, discarderSeat, tile);
+                return;
+            }
+        }
+
+        // 人类不碰不杠，检查是否有 AI 碰杠
         for (let step = 1; step <= 3; step++) {
             const seat = (discarderSeat + step) % 4;
+            if (seat === 0) continue;
             const p = this.players[seat];
             if (p.isHu) continue;
 
             const reaction = AIPlayerController.checkReactionToDiscard(p, tile, discarderSeat, this.getGameState());
             if (reaction) {
-                if (reaction.action === 'HU') {
-                    // AI 点炮和牌
-                    this.executeAIHu(seat, tile, discarderSeat, reaction.fanInfo);
-                    return;
-                } else if (reaction.action === 'GANG') {
+                if (reaction.action === 'GANG') {
                     this.executeAIGang(seat, tile, discarderSeat);
                     return;
                 } else if (reaction.action === 'PENG') {
@@ -516,16 +704,7 @@ class MahjongApp {
             }
         }
 
-        // 检查玩家自己是否能对 AI 的弃牌做出反应
-        if (discarderSeat !== 0 && !this.players[0].isHu) {
-            const myReactions = this.checkMyReactionToDiscard(tile, discarderSeat);
-            if (myReactions.length > 0) {
-                this.promptPlayerReactions(myReactions, discarderSeat, tile);
-                return;
-            }
-        }
-
-        // 无人碰杠胡，流转到下一位摸牌
+        // 全场无人要此牌，摸牌权流转
         this.advanceToNextTurn(discarderSeat);
     }
 
@@ -543,7 +722,7 @@ class MahjongApp {
             const fanInfo = MahjongLogic.evaluateHandFans(testHand, this.players[0].melds, this.players[0].queSuit, tile, false);
             actions.push({
                 action: 'HU',
-                label: `胡牌 (${fanInfo.totalFan}番)`,
+                label: `🎉 点炮胡 (${fanInfo.totalFan}番)`,
                 tile,
                 fromSeat,
                 fanInfo
@@ -604,6 +783,25 @@ class MahjongApp {
             text: '过',
             action: () => {
                 this.clearActionOptions();
+                this.pendingReaction = null;
+                // 人类放弃后，流转检查 AI 碰杠
+                for (let step = 1; step <= 3; step++) {
+                    const seat = (discarderSeat + step) % 4;
+                    if (seat === 0) continue;
+                    const p = this.players[seat];
+                    if (p.isHu) continue;
+
+                    const reaction = AIPlayerController.checkReactionToDiscard(p, tile, discarderSeat, this.getGameState());
+                    if (reaction) {
+                        if (reaction.action === 'GANG') {
+                            this.executeAIGang(seat, tile, discarderSeat);
+                            return;
+                        } else if (reaction.action === 'PENG') {
+                            this.executeAIPeng(seat, tile, discarderSeat);
+                            return;
+                        }
+                    }
+                }
                 this.advanceToNextTurn(discarderSeat);
             }
         });
@@ -612,6 +810,7 @@ class MahjongApp {
     executePlayerPeng(tile, fromSeat) {
         soundEngine.playPeng();
         this.clearActionOptions();
+        this.pendingReaction = null;
         const myPlayer = this.players[0];
 
         // 移除手牌中2张对应的牌
@@ -635,11 +834,13 @@ class MahjongApp {
         this.updateVisibleCounts();
         this.renderAll();
         this.showToast('碰牌成功！请选择打出一张牌。');
+        this.dom.btnDiscard.style.display = 'inline-flex';
     }
 
     executePlayerZhiGang(tile, fromSeat) {
         soundEngine.playGang();
         this.clearActionOptions();
+        this.pendingReaction = null;
         const myPlayer = this.players[0];
 
         const meldCards = [tile];
@@ -651,8 +852,8 @@ class MahjongApp {
             return true;
         });
 
-        myPlayer.melds.push({ type: 'GANG', tiles: meldCards });
-        this.showToast('杠牌成功！开杠补摸一张牌。');
+        myPlayer.melds.push({ type: 'GANG', subType: 'ZHI_GANG', tiles: meldCards, fromSeat });
+        this.showToast(`直杠【${formatTile(tile)}】成功！开杠补摸一张牌。`);
 
         // 开杠补摸一张牌
         if (this.wall.length > 0) {
@@ -669,16 +870,21 @@ class MahjongApp {
     executePlayerHu() {
         soundEngine.playHu();
         this.clearActionOptions();
+        this.pendingReaction = null;
         const myPlayer = this.players[0];
         myPlayer.isHu = true;
         this.showToast('🎉 自摸胡牌大满贯！血战到底继续角逐！');
         this.renderAll();
         this.checkBloodBattleRoundEnd();
+        if (this.phase === GAME_PHASES.PLAYING) {
+            this.advanceToNextTurn(0);
+        }
     }
 
     executePlayerDianPaoHu(tile, fromSeat, fanInfo) {
         soundEngine.playHu();
         this.clearActionOptions();
+        this.pendingReaction = null;
         const myPlayer = this.players[0];
         myPlayer.hand.push(tile);
         myPlayer.hand = MahjongLogic.sortTiles(myPlayer.hand);
@@ -686,6 +892,9 @@ class MahjongApp {
         this.showToast(`🎉 点炮胡牌！赢取 ${this.players[fromSeat].name} ${fanInfo.totalFan} 番大奖！`);
         this.renderAll();
         this.checkBloodBattleRoundEnd();
+        if (this.phase === GAME_PHASES.PLAYING) {
+            this.advanceToNextTurn(fromSeat);
+        }
     }
 
     executeAIPeng(seat, tile, discarderSeat) {
@@ -884,6 +1093,57 @@ class MahjongApp {
         soundEngine.playSelect();
         const gameState = this.getGameState();
         const report = AIAnalyzer.generateDeepThinkingReport(gameState);
+
+        // 碰 / 杠 / 胡 实时战术决策建议
+        const btnReactionTab = document.getElementById('tab-btn-reaction');
+        const panelReaction = document.getElementById('panel-reaction');
+        const reactionContainer = document.getElementById('reaction-decision-container');
+
+        if (this.pendingReaction && this.pendingReaction.reactions && this.pendingReaction.reactions.length > 0) {
+            const reactionReport = AIAnalyzer.analyzeMeldReaction(this.pendingReaction, gameState);
+            if (btnReactionTab) btnReactionTab.style.display = 'inline-block';
+
+            if (reactionContainer && reactionReport) {
+                reactionContainer.innerHTML = `
+                    <div class="reaction-banner" style="background: rgba(30, 41, 59, 0.9); border: 2px solid #f1c40f; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                        <h3 style="color: #f1c40f; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            <span>🔔 他家打出【${formatTile(reactionReport.tile)}】—— 碰 / 杠 / 胡 实时战术决策</span>
+                        </h3>
+                        <p style="color: #94a3b8; font-size: 13px;">来自【${reactionReport.opponentName}】的弃牌。系统基于手牌向听推进、番型上限与后续出牌安全度推演：</p>
+                    </div>
+                    <div class="reaction-results-list">
+                        ${reactionReport.results.map(res => `
+                            <div class="reasoning-step-card" style="margin-bottom: 14px; border-left-color: ${res.badgeColor};">
+                                <div class="step-card-header">
+                                    <span class="step-title" style="color: ${res.badgeColor}; font-weight: bold; font-size: 15px;">${res.recommendation}</span>
+                                    <span class="step-tag" style="background: ${res.badgeColor}; color: #fff;">${res.badge}</span>
+                                </div>
+                                <div class="step-content" style="margin-top: 8px; font-size: 13px; line-height: 1.6; color: #e2e8f0;">
+                                    <strong>${res.summary}</strong>
+                                    <div style="margin-top: 6px; white-space: pre-line; color: #cbd5e1;">${res.details}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            // 自动切换到碰杠标签
+            document.querySelectorAll('.thinking-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content-panel').forEach(p => p.style.display = 'none');
+            if (btnReactionTab) btnReactionTab.classList.add('active');
+            if (panelReaction) panelReaction.style.display = 'block';
+        } else {
+            if (btnReactionTab) btnReactionTab.style.display = 'none';
+            const optBtn = document.querySelector('.thinking-tabs .tab-btn[data-target="panel-optimal"]');
+            const optPanel = document.getElementById('panel-optimal');
+            if (optBtn && (!document.querySelector('.thinking-tabs .tab-btn.active') || (btnReactionTab && btnReactionTab.classList.contains('active')))) {
+                document.querySelectorAll('.thinking-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content-panel').forEach(p => p.style.display = 'none');
+                optBtn.classList.add('active');
+                if (optPanel) optPanel.style.display = 'block';
+            }
+        }
 
         // 渲染推荐置顶大卡片
         const best = report.bestChoice;
@@ -1275,23 +1535,31 @@ class MahjongApp {
         const allMyTiles = myPlayer.drawTile ? [...myPlayer.hand, myPlayer.drawTile] : myPlayer.hand;
         const hasQueTiles = MahjongLogic.hasQueTile(allMyTiles, myPlayer.queSuit);
 
-        // 如果处于正常摸打出牌期，计算各牌危险度
+        // 如果处于正常摸打出牌期，计算各牌危险度与 AI 推荐切牌
         let dangerMap = {};
+        let recommendedTileCode = null;
         if (this.phase === GAME_PHASES.PLAYING && this.currentTurn === 0) {
-            const opponentProfiles = AIAnalyzer.analyzeOpponents(this.getGameState());
+            const gameState = this.getGameState();
+            const report = AIAnalyzer.generateDeepThinkingReport(gameState);
+            if (report && report.bestChoice && report.bestChoice.tile) {
+                recommendedTileCode = report.bestChoice.tile.code;
+            }
+            const opponentProfiles = AIAnalyzer.analyzeOpponents(gameState);
             for (const t of allMyTiles) {
-                dangerMap[t.uid] = AIAnalyzer.evaluateTileTotalDanger(t, opponentProfiles, this.getGameState());
+                dangerMap[t.uid] = AIAnalyzer.evaluateTileTotalDanger(t, opponentProfiles, gameState);
             }
         }
 
-        // 渲染 13 张主手牌
+        // 渲染主手牌
         myPlayer.hand.forEach(tile => {
             const isQue = tile.suit === myPlayer.queSuit;
             const isSelected = this.selectedDiscardTile && this.selectedDiscardTile.uid === tile.uid;
+            const isRecommended = (tile.code === recommendedTileCode);
 
             const tileEl = this.createTileElement(tile, {
                 interactive: true,
                 isSelected,
+                isRecommended,
                 dangerInfo: dangerMap[tile.uid],
                 isQue,
                 mustDiscardQue: hasQueTiles && isQue,
@@ -1300,11 +1568,6 @@ class MahjongApp {
 
             tileEl.addEventListener('click', () => {
                 this.handleTileClick(tile);
-            });
-
-            tileEl.addEventListener('dblclick', () => {
-                this.selectedDiscardTile = tile;
-                this.executePlayerDiscard();
             });
 
             this.dom.myHandRow.appendChild(tileEl);
@@ -1316,10 +1579,12 @@ class MahjongApp {
             const dt = myPlayer.drawTile;
             const isQue = dt.suit === myPlayer.queSuit;
             const isSelected = this.selectedDiscardTile && this.selectedDiscardTile.uid === dt.uid;
+            const isRecommended = (dt.code === recommendedTileCode);
 
             const drawEl = this.createTileElement(dt, {
                 interactive: true,
                 isSelected,
+                isRecommended,
                 dangerInfo: dangerMap[dt.uid],
                 isQue,
                 mustDiscardQue: hasQueTiles && isQue,
@@ -1328,11 +1593,6 @@ class MahjongApp {
 
             drawEl.addEventListener('click', () => {
                 this.handleTileClick(dt);
-            });
-
-            drawEl.addEventListener('dblclick', () => {
-                this.selectedDiscardTile = dt;
-                this.executePlayerDiscard();
             });
 
             this.dom.myDrawSlot.appendChild(drawEl);
@@ -1348,7 +1608,15 @@ class MahjongApp {
             return;
         }
 
-        // 正常出牌选择
+        // 如果已经选中了此张牌，再次点击直接出牌！
+        if (this.currentTurn === 0 && this.phase === GAME_PHASES.PLAYING) {
+            if (this.selectedDiscardTile && this.selectedDiscardTile.uid === tile.uid) {
+                this.executePlayerDiscard();
+                return;
+            }
+        }
+
+        // 首次点击：选中该牌并抬起高亮
         this.selectedDiscardTile = tile;
         this.renderMySeat();
     }
@@ -1379,6 +1647,7 @@ class MahjongApp {
         const {
             interactive = true,
             isSelected = false,
+            isRecommended = false,
             size = '',
             dangerInfo = null,
             isQue = false,
@@ -1387,29 +1656,12 @@ class MahjongApp {
         } = options;
 
         const el = document.createElement('div');
-        el.className = `mj-tile ${size} ${interactive ? 'interactive' : ''} ${isSelected ? 'selected' : ''} ${mustDiscardQue ? 'must-discard-que' : ''} ${disabledNonQue ? 'disabled-non-que' : ''}`;
+        el.className = `mj-tile ${size} ${interactive ? 'interactive' : ''} ${isSelected ? 'selected' : ''} ${isRecommended ? 'ai-recommended' : ''} ${mustDiscardQue ? 'must-discard-que' : ''} ${disabledNonQue ? 'disabled-non-que' : ''}`;
 
-        // 牌心内容
+        // 牌心内容 (使用高保真传统麻将纹样渲染引擎)
         const content = document.createElement('div');
         content.className = `mj-content suit-${tile.suit}`;
-
-        if (tile.suit === 'wan') {
-            content.innerHTML = `
-                <span class="wan-val">${NUMBER_CHARS[tile.val]}</span>
-                <span class="wan-char">萬</span>
-            `;
-        } else if (tile.suit === 'tiao') {
-            content.innerHTML = `
-                <span class="tiao-val">${tile.val}</span>
-                <span class="tiao-char">条</span>
-            `;
-        } else if (tile.suit === 'tong') {
-            content.innerHTML = `
-                <span class="tong-val">${tile.val}</span>
-                <span class="tong-char">筒</span>
-            `;
-        }
-
+        content.innerHTML = TileRenderer.renderTileFace(tile);
         el.appendChild(content);
 
         // 定缺小红点
@@ -1420,12 +1672,20 @@ class MahjongApp {
             el.appendChild(queDot);
         }
 
-        // 危险度指示胶囊（如果是出牌期自家手牌）
-        if (dangerInfo && this.showDangerOverlay) {
+        // AI 推荐切牌角标
+        if (isRecommended) {
+            const recBadge = document.createElement('div');
+            recBadge.className = 'ai-recommend-badge';
+            recBadge.innerHTML = '<span class="rec-icon">⭐</span>推荐';
+            recBadge.title = 'AI 算法首选推荐切牌（兼顾进张向听速度与防点炮安全）';
+            el.appendChild(recBadge);
+        } else if (dangerInfo && this.showDangerOverlay) {
+            // 放炮危险度指示胶囊（明确提示：安、慎、危、极危与百分比）
             const badge = document.createElement('div');
             badge.className = `danger-badge ${dangerInfo.level.toLowerCase()}`;
-            badge.innerText = `${dangerInfo.score}%`;
-            badge.title = `${dangerInfo.levelText}：${dangerInfo.primaryReason}`;
+            const shortText = dangerInfo.level === 'SAFE' ? '安' : (dangerInfo.level === 'CAUTION' ? '慎' : (dangerInfo.level === 'DANGER' ? '危' : '极危'));
+            badge.innerText = `${shortText} ${dangerInfo.score}%`;
+            badge.title = `放炮危险度 ${dangerInfo.score}% (${dangerInfo.levelText})：${dangerInfo.primaryReason}`;
             el.appendChild(badge);
         }
 
